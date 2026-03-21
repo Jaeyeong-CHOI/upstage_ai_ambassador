@@ -7,7 +7,6 @@ const files = [
 ];
 
 const requiredTopKeys = ['name', 'nodes', 'connections', 'active', 'settings'];
-const webhookPaths = new Set();
 let failed = false;
 
 function assert(cond, msg) {
@@ -40,18 +39,11 @@ for (const file of files) {
   const nodeNames = new Set(wf.nodes.map(n => n.name));
   assert(nodeNames.size === wf.nodes.length, `${file}: node names are unique`);
 
+  const manualTriggerNodes = wf.nodes.filter(n => n.type === 'n8n-nodes-base.manualTrigger');
+  assert(manualTriggerNodes.length === 1, `${file}: contains exactly one manual trigger`);
+
   const webhookNodes = wf.nodes.filter(n => n.type === 'n8n-nodes-base.webhook');
-  assert(webhookNodes.length === 1, `${file}: contains exactly one webhook trigger`);
-
-  const respondNodes = wf.nodes.filter(n => n.type === 'n8n-nodes-base.respondToWebhook');
-  assert(respondNodes.length === 1, `${file}: contains exactly one respondToWebhook`);
-
-  if (webhookNodes[0]) {
-    const path = webhookNodes[0]?.parameters?.path;
-    assert(typeof path === 'string' && path.length > 0, `${file}: webhook path exists`);
-    assert(!webhookPaths.has(path), `${file}: webhook path '${path}' is unique across workflows`);
-    webhookPaths.add(path);
-  }
+  assert(webhookNodes.length === 0, `${file}: does not include webhook trigger`);
 
   const hasAuthHeader = wf.nodes.some(n => {
     if (n.type !== 'n8n-nodes-base.httpRequest') return false;

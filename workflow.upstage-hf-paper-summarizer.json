@@ -2,17 +2,15 @@
   "name": "Upstage x HuggingFace Paper Summarizer",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "hf-paper-summarize",
-        "responseMode": "responseNode"
-      },
+      "parameters": {},
       "id": "Webhook_Trigger",
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 280],
-      "webhookId": "hf-paper-summarize"
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        280
+      ]
     },
     {
       "parameters": {
@@ -20,7 +18,7 @@
           "assignments": [
             {
               "name": "urls",
-              "value": "={{$json.body.urls || $json.urls || []}}",
+              "value": "={{$json.body?.urls || $json.urls || ['https://huggingface.co/papers/2403.12345']}}",
               "type": "array"
             },
             {
@@ -35,7 +33,10 @@
       "name": "Prepare Input",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [470, 280]
+      "position": [
+        470,
+        280
+      ]
     },
     {
       "parameters": {
@@ -45,7 +46,10 @@
       "name": "Explode URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 280]
+      "position": [
+        700,
+        280
+      ]
     },
     {
       "parameters": {
@@ -59,7 +63,10 @@
       "name": "Fetch Paper Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [930, 280]
+      "position": [
+        930,
+        280
+      ]
     },
     {
       "parameters": {
@@ -91,7 +98,10 @@
       "name": "Upstage Summarize",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1170, 280]
+      "position": [
+        1170,
+        280
+      ]
     },
     {
       "parameters": {
@@ -101,7 +111,10 @@
       "name": "Parse Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1410, 280]
+      "position": [
+        1410,
+        280
+      ]
     },
     {
       "parameters": {
@@ -111,41 +124,83 @@
       "name": "Collect Summaries",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1640, 280]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{$json}}"
-      },
-      "id": "Respond",
-      "name": "Respond",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1860, 280]
+      "position": [
+        1640,
+        280
+      ]
     }
   ],
   "connections": {
-    "Webhook Trigger": {
-      "main": [[{ "node": "Prepare Input", "type": "main", "index": 0 }]]
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare Input": {
-      "main": [[{ "node": "Explode URLs", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Explode URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Explode URLs": {
-      "main": [[{ "node": "Fetch Paper Content", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Fetch Paper Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Fetch Paper Content": {
-      "main": [[{ "node": "Upstage Summarize", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Upstage Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Upstage Summarize": {
-      "main": [[{ "node": "Parse Result", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Result": {
-      "main": [[{ "node": "Collect Summaries", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Collect Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Collect Summaries": {
-      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+      "main": [
+        []
+      ]
     }
   },
   "active": false,

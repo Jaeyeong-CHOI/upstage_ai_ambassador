@@ -44,53 +44,17 @@ UPSTAGE_API_KEY=your_upstage_api_key
 
 > 절대 깃허브에 실제 키를 커밋하지 마세요.
 
-## 3) 테스트 호출
+## 3) n8n 페이지에서 바로 실행 (Manual Trigger)
 
-기본 버전:
+이 저장소의 3개 워크플로우는 모두 **Manual Trigger** 기준이다.
 
-```bash
-curl -X POST "https://<YOUR_N8N_HOST>/webhook/hf-paper-summarize" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetLanguage": "ko",
-    "urls": [
-      "https://huggingface.co/papers/2403.12345"
-    ]
-  }'
-```
+1. n8n에서 원하는 workflow JSON import
+2. `Prepare Input` / `Set Input` 노드 클릭
+3. 입력값(urls/items/feedback) 수정
+4. 우측 상단 `Execute Workflow`
+5. 마지막 `Collect` 또는 `Collect Summaries` 노드에서 결과 확인
 
-고급 버전(피드백 반영):
-
-```bash
-curl -X POST "https://<YOUR_N8N_HOST>/webhook/hf-paper-summarize-advanced" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetLanguage": "ko",
-    "focus": "method,ablation,limitations",
-    "feedback": "수치와 실험 조건을 더 강조하고, 재현 난이도를 평가해줘",
-    "urls": [
-      "https://huggingface.co/papers/2403.12345",
-      "https://huggingface.co/papers/2402.01234"
-    ]
-  }'
-```
-
-자유형 오케스트레이터(텍스트+URL 혼합):
-
-```bash
-curl -X POST "https://<YOUR_N8N_HOST>/webhook/research-orchestrator-pro" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "targetLanguage": "ko",
-    "goal": "다음 주 실험 우선순위 정리",
-    "feedback": "리스크/기회와 실험 아이디어를 강하게",
-    "items": [
-      "https://huggingface.co/papers/2403.12345",
-      "https://huggingface.co/papers/2402.01234",
-      "우리 팀은 현재 24GB GPU 환경에서만 재현 가능"
-    ]
-  }'
-```
+기본 샘플 입력값은 파일 안에 기본값으로 들어있어서 import 후 바로 실행 가능하다.
 
 ## 4) 응답 예시
 
