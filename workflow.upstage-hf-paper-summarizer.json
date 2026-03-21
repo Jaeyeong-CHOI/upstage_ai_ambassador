@@ -70,7 +70,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'REPLACE_WITH_YOUR_REAL_KEY')}}"
+              "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'up_UAptGWmz9JEkokXvpMnMSbKaij5ls')}}"
             },
             {
               "name": "Content-Type",
