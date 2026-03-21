@@ -1,0 +1,9 @@
+{
+  "targetLanguage": "ko",
+  "goal": "다음 주 실험 우선순위",
+  "feedback": "리스크/기회 중심",
+  "items": [
+    "https://huggingface.co/papers/2403.12345",
+    "우리 팀은 24GB GPU 환경에서만 재현 가능"
+  ]
+}

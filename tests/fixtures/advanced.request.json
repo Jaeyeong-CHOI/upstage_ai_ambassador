@@ -1,0 +1,9 @@
+{
+  "targetLanguage": "ko",
+  "focus": "method,ablation,limitations",
+  "feedback": "수치와 실험 조건 강조",
+  "urls": [
+    "https://huggingface.co/papers/2403.12345",
+    "https://huggingface.co/papers/2402.01234"
+  ]
+}

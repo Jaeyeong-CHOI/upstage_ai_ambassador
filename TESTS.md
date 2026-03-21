@@ -12,10 +12,12 @@
 
 ```bash
 cd n8n-upstage-hf-paper-summarizer
-node scripts_validate_workflows.js
+npm run check
 ```
 
-성공 기준: `All workflow validations passed`
+(내부적으로 `scripts/validate-workflows.js` + `scripts/test-fixtures.js` 실행)
+
+성공 기준: `All workflow validations passed` + `Fixture validation passed`
 
 ---
 

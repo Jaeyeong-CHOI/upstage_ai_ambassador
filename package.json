@@ -1,0 +1,11 @@
+{
+  "name": "n8n-upstage-hf-paper-summarizer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deploy-grade n8n workflows for research summarization with Upstage",
+  "scripts": {
+    "lint:workflows": "node scripts/validate-workflows.js",
+    "test:fixtures": "node scripts/test-fixtures.js",
+    "check": "npm run lint:workflows && npm run test:fixtures"
+  }
+}
