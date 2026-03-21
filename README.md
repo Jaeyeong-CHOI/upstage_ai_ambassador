@@ -20,6 +20,8 @@
 - `scripts/validate-workflows.js` : JSON/연결/웹훅 경로/키 fallback 정적 검증
 - `scripts/test-fixtures.js` : 요청 fixture 유효성 검사
 - `.github/workflows/ci.yml` : push/PR 자동 검증 CI
+- `.github/workflows/pages.yml` : GitHub Pages 자동 배포
+- `site/` : API 키 입력 → 치환된 JSON 다운로드 웹페이지
 - `docs/DEPLOYMENT.md` : 운영 배포 절차
 - `blog-post.md` : 제작 과정을 정리한 블로그 포스트 초안
 
