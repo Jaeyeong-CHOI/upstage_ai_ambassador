@@ -257,7 +257,7 @@
     },
     {
       "parameters": {
-        "jsCode": "if ($json.error) {\n  return [{ json: { idx:$item(0).$node['Merge Content'].json.idx, url:$item(0).$node['Merge Content'].json.url || '', ok:false, error_type:'analyze_failed', status:$json.error?.statusCode || $json.statusCode || null, error_message:$json.error?.message || $json.message || 'Unknown error' } }];\n}\nconst c = $json.choices?.[0]?.message?.content || '{}';\nlet p={};\ntry{p=JSON.parse(c);}catch{p={raw:c}}\nreturn [{json:{idx:$item(0).$node['Merge Content'].json.idx,url:$item(0).$node['Merge Content'].json.url||'',ok:true,...p}}];"
+        "jsCode": "const base = {\n  idx: $item(0).$node['Merge Content'].json.idx,\n  url: $item(0).$node['Merge Content'].json.url || ''\n};\n\nconst status =\n  $json?.error?.statusCode ??\n  $json?.statusCode ??\n  $json?.code ??\n  $json?.error?.code ??\n  null;\n\nconst errMsg =\n  $json?.error?.message ??\n  $json?.message ??\n  $json?.body?.error?.message ??\n  $json?.error?.response?.body?.error?.message ??\n  null;\n\nif ($json.error || (!$json.choices && !($json.body && $json.body.choices))) {\n  return [{\n    json: {\n      ...base,\n      ok: false,\n      error_type: 'analyze_failed',\n      status,\n      error_message: errMsg || 'Analyze response missing choices',\n      debug_raw: JSON.stringify($json).slice(0, 1200)\n    }\n  }];\n}\n\nconst choices = $json.choices || $json.body?.choices || [];\nconst c = choices?.[0]?.message?.content || '{}';\nlet p = {};\ntry { p = JSON.parse(c); } catch { p = { raw: c }; }\n\nreturn [{ json: { ...base, ok: true, ...p } }];"
       },
       "id": "Parse",
       "name": "Parse",
