@@ -16,6 +16,8 @@
 - `workflow.upstage-hf-paper-summarizer-advanced.json` : 2단계 요약 + 피드백 반영 + 품질점수
 - `workflow.research-orchestrator-pro.json` : URL/텍스트 혼합 입력 + 포트폴리오형 리서치 오케스트레이션
 - `.env.example` : 환경변수 템플릿 (실제 키 제외)
+- `TESTS.md` : 3개 워크플로우 독립 동작 테스트 체크리스트
+- `scripts_validate_workflows.js` : JSON/연결/웹훅 경로/키 fallback 정적 검증 스크립트
 - `blog-post.md` : 제작 과정을 정리한 블로그 포스트 초안
 
 ---
