@@ -1,0 +1,203 @@
+{
+  "name": "Research Orchestrator Pro (Multi-Path)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research-orchestrator-pro",
+        "responseMode": "responseNode"
+      },
+      "id": "Webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 320],
+      "webhookId": "research-orchestrator-pro"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "name": "items", "value": "={{$json.body.items || []}}", "type": "array" },
+            { "name": "targetLanguage", "value": "={{$json.body.targetLanguage || 'ko'}}", "type": "string" },
+            { "name": "goal", "value": "={{$json.body.goal || 'research-brief'}}", "type": "string" },
+            { "name": "feedback", "value": "={{$json.body.feedback || ''}}", "type": "string" }
+          ]
+        }
+      },
+      "id": "SetInput",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [390, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const arr = $json.items || [];\nif (!Array.isArray(arr) || arr.length === 0) throw new Error('body.items 배열이 필요합니다.');\nreturn arr.map((x, idx) => ({ json: { idx, raw: x, targetLanguage: $json.targetLanguage, goal: $json.goal, feedback: $json.feedback } }));"
+      },
+      "id": "Explode",
+      "name": "Explode Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const v = $json.raw;\nconst isUrl = typeof v === 'string' && /^https?:\\/\\//i.test(v);\nreturn [{ json: { ...$json, type: isUrl ? 'url' : 'text', url: isUrl ? v : '', text: isUrl ? '' : String(v) } }];"
+      },
+      "id": "Classify",
+      "name": "Classify Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [810, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            { "value1": "={{$json.type}}", "operation": "equals", "value2": "url" }
+          ]
+        }
+      },
+      "id": "IfURL",
+      "name": "If URL",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1020, 320]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{'https://r.jina.ai/http://' + $json.url.replace(/^https?:\\/\\//, '')}}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "FetchFromURL",
+      "name": "Fetch From URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 220]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "name": "content", "value": "={{$json.text}}", "type": "string" },
+            { "name": "url", "value": "={{$json.url}}", "type": "string" },
+            { "name": "idx", "value": "={{$json.idx}}", "type": "number" },
+            { "name": "targetLanguage", "value": "={{$json.targetLanguage}}", "type": "string" },
+            { "name": "goal", "value": "={{$json.goal}}", "type": "string" },
+            { "name": "feedback", "value": "={{$json.feedback}}", "type": "string" }
+          ]
+        }
+      },
+      "id": "PassText",
+      "name": "Pass Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1240, 420]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "name": "content", "value": "={{($json.body || $json.data || $json).toString().slice(0,12000)}}", "type": "string" },
+            { "name": "url", "value": "={{$item(0).$node['Classify Source'].json.url}}", "type": "string" },
+            { "name": "idx", "value": "={{$item(0).$node['Classify Source'].json.idx}}", "type": "number" },
+            { "name": "targetLanguage", "value": "={{$item(0).$node['Classify Source'].json.targetLanguage}}", "type": "string" },
+            { "name": "goal", "value": "={{$item(0).$node['Classify Source'].json.goal}}", "type": "string" },
+            { "name": "feedback", "value": "={{$item(0).$node['Classify Source'].json.feedback}}", "type": "string" }
+          ]
+        }
+      },
+      "id": "NormalizeFetched",
+      "name": "Normalize Fetched",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1450, 220]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "MergeContent",
+      "name": "Merge Content",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1450, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upstage.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'REPLACE_WITH_YOUR_REAL_KEY')}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model:'solar-pro2', temperature:0.2, response_format:{ type:'json_schema', json_schema:{ name:'analysis', schema:{ type:'object', properties:{ source_type:{type:'string'}, topic:{type:'string'}, one_line:{type:'string'}, summary:{type:'string'}, key_points:{type:'array',items:{type:'string'}}, risks:{type:'array',items:{type:'string'}}, opportunities:{type:'array',items:{type:'string'}}, experiment_ideas:{type:'array',items:{type:'string'}}, quiz:{type:'array',items:{type:'string'}} }, required:['source_type','topic','one_line','summary','key_points','risks','opportunities','experiment_ideas','quiz'], additionalProperties:false } } }, messages:[ { role:'system', content:`너는 연구 코파일럿이다. ${$json.targetLanguage}로 답하라.` }, { role:'user', content:`goal=${$json.goal}\nfeedback=${$json.feedback || '없음'}\nurl=${$json.url || 'n/a'}\n텍스트:\n${$json.content}` } ] } }}",
+        "options": { "response": { "responseFormat": "json" } }
+      },
+      "id": "Analyze",
+      "name": "Analyze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1660, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $json.choices?.[0]?.message?.content || '{}';\nlet p={};\ntry{p=JSON.parse(c);}catch{p={raw:c}}\nreturn [{json:{idx:$item(0).$node['Merge Content'].json.idx,url:$item(0).$node['Merge Content'].json.url||'',...p}}];"
+      },
+      "id": "Parse",
+      "name": "Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1870, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i=>i.json).sort((a,b)=>(a.idx??0)-(b.idx??0));\nconst topOps = all.flatMap(x=>x.opportunities||[]).slice(0,6);\nconst topRisks = all.flatMap(x=>x.risks||[]).slice(0,6);\nconst topExperiments = all.flatMap(x=>x.experiment_ideas||[]).slice(0,8);\nreturn [{json:{ok:true,count:all.length,portfolio:{top_opportunities:topOps,top_risks:topRisks,next_experiments:topExperiments},items:all}}];"
+      },
+      "id": "Portfolio",
+      "name": "Portfolio Synthesizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2080, 360]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "Respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2280, 360]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Set Input", "type": "main", "index": 0 }]] },
+    "Set Input": { "main": [[{ "node": "Explode Items", "type": "main", "index": 0 }]] },
+    "Explode Items": { "main": [[{ "node": "Classify Source", "type": "main", "index": 0 }]] },
+    "Classify Source": { "main": [[{ "node": "If URL", "type": "main", "index": 0 }]] },
+    "If URL": {
+      "main": [
+        [{ "node": "Fetch From URL", "type": "main", "index": 0 }],
+        [{ "node": "Pass Text", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch From URL": { "main": [[{ "node": "Normalize Fetched", "type": "main", "index": 0 }]] },
+    "Normalize Fetched": { "main": [[{ "node": "Merge Content", "type": "main", "index": 0 }]] },
+    "Pass Text": { "main": [[{ "node": "Merge Content", "type": "main", "index": 1 }]] },
+    "Merge Content": { "main": [[{ "node": "Analyze", "type": "main", "index": 0 }]] },
+    "Analyze": { "main": [[{ "node": "Parse", "type": "main", "index": 0 }]] },
+    "Parse": { "main": [[{ "node": "Portfolio Synthesizer", "type": "main", "index": 0 }]] },
+    "Portfolio Synthesizer": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

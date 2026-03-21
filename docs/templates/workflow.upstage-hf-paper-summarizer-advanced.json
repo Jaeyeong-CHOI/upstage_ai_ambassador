@@ -1,0 +1,155 @@
+{
+  "name": "Upstage x HF Paper Summarizer (Advanced + Feedback)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hf-paper-summarize-advanced",
+        "responseMode": "responseNode"
+      },
+      "id": "Webhook_Trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "hf-paper-summarize-advanced"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "name": "urls", "value": "={{$json.body.urls || []}}", "type": "array" },
+            { "name": "targetLanguage", "value": "={{$json.body.targetLanguage || 'ko'}}", "type": "string" },
+            { "name": "feedback", "value": "={{$json.body.feedback || ''}}", "type": "string" },
+            { "name": "focus", "value": "={{$json.body.focus || 'method,results,limitations'}}", "type": "string" }
+          ]
+        }
+      },
+      "id": "Set_Input",
+      "name": "Set Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const urls = $json.urls || [];\nif (!Array.isArray(urls) || urls.length === 0) throw new Error('body.urls 배열이 필요합니다.');\nreturn urls.map((url) => ({ json: { url, targetLanguage: $json.targetLanguage, feedback: $json.feedback, focus: $json.focus } }));"
+      },
+      "id": "Code_Explode",
+      "name": "Explode URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{'https://r.jina.ai/http://' + $json.url.replace(/^https?:\\/\\//, '')}}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "Fetch_Text",
+      "name": "Fetch Paper Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [870, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upstage.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'up_UAptGWmz9JEkokXvpMnMSbKaij5ls')}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'solar-pro2', temperature: 0.2, response_format: { type: 'json_schema', json_schema: { name: 'first_pass', schema: { type: 'object', properties: { title:{type:'string'}, one_line:{type:'string'}, problem:{type:'string'}, method:{type:'string'}, results:{type:'string'}, limitations:{type:'string'}, key_numbers:{type:'array',items:{type:'string'}}, open_questions:{type:'array',items:{type:'string'}} }, required:['title','one_line','problem','method','results','limitations','key_numbers','open_questions'], additionalProperties:false } } }, messages: [ { role:'system', content:`너는 논문 분석가다. ${$json.targetLanguage}로 답하고 과장 금지.` }, { role:'user', content:`focus=${$json.focus}\nURL=${$json.url}\n본문:\n${($json.body || '').toString().slice(0,12000)}` } ] } }}",
+        "options": { "response": { "responseFormat": "json" } }
+      },
+      "id": "LLM_First",
+      "name": "LLM First Pass",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const first = $json.choices?.[0]?.message?.content || '{}';\nlet parsed = {};\ntry { parsed = JSON.parse(first); } catch { parsed = { raw: first }; }\nreturn [{ json: { ...$item(0).$node['Explode URLs'].json, first_pass: parsed } }];"
+      },
+      "id": "Parse_First",
+      "name": "Parse First Pass",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upstage.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'REPLACE_WITH_YOUR_REAL_KEY')}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model:'solar-pro2', temperature:0.1, response_format: { type:'json_schema', json_schema:{ name:'final_pack', schema:{ type:'object', properties:{ source_url:{type:'string'}, final_summary:{type:'object',properties:{ title:{type:'string'}, one_line:{type:'string'}, problem:{type:'string'}, method:{type:'string'}, results:{type:'string'}, limitations:{type:'string'} }, required:['title','one_line','problem','method','results','limitations'], additionalProperties:false }, quality_score:{type:'number'}, confidence:{type:'string'}, improvement_notes:{type:'array',items:{type:'string'}}, next_actions:{type:'array',items:{type:'string'}} }, required:['source_url','final_summary','quality_score','confidence','improvement_notes','next_actions'], additionalProperties:false } } }, messages:[ { role:'system', content:'너는 수석 리뷰어다. 초안 요약을 비판적으로 개선하라.' }, { role:'user', content:`원본 URL: ${$json.url}\n사용자 피드백: ${$json.feedback || '없음'}\n초안 요약(JSON): ${JSON.stringify($json.first_pass)}\n요구사항: 숫자/조건 보존, 모호성 줄이기, 실험 관점 액션 아이템 강화.` } ] } }}",
+        "options": { "response": { "responseFormat": "json" } }
+      },
+      "id": "LLM_Refine",
+      "name": "LLM Refine with Feedback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1550, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.choices?.[0]?.message?.content || '{}';\nlet parsed = {};\ntry { parsed = JSON.parse(raw); } catch { parsed = { parse_error:true, raw }; }\nreturn [{ json: parsed }];"
+      },
+      "id": "Parse_Final",
+      "name": "Parse Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1770, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i => i.json);\nconst avg = all.length ? all.reduce((s,x)=>s + (Number(x.quality_score)||0),0)/all.length : 0;\nreturn [{ json: { ok:true, count: all.length, average_quality_score: Number(avg.toFixed(2)), summaries: all } }];"
+      },
+      "id": "Collect",
+      "name": "Collect",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "Respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2180, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": { "main": [[{ "node": "Set Input", "type": "main", "index": 0 }]] },
+    "Set Input": { "main": [[{ "node": "Explode URLs", "type": "main", "index": 0 }]] },
+    "Explode URLs": { "main": [[{ "node": "Fetch Paper Text", "type": "main", "index": 0 }]] },
+    "Fetch Paper Text": { "main": [[{ "node": "LLM First Pass", "type": "main", "index": 0 }]] },
+    "LLM First Pass": { "main": [[{ "node": "Parse First Pass", "type": "main", "index": 0 }]] },
+    "Parse First Pass": { "main": [[{ "node": "LLM Refine with Feedback", "type": "main", "index": 0 }]] },
+    "LLM Refine with Feedback": { "main": [[{ "node": "Parse Final", "type": "main", "index": 0 }]] },
+    "Parse Final": { "main": [[{ "node": "Collect", "type": "main", "index": 0 }]] },
+    "Collect": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,155 @@
+{
+  "name": "Upstage x HuggingFace Paper Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hf-paper-summarize",
+        "responseMode": "responseNode"
+      },
+      "id": "Webhook_Trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 280],
+      "webhookId": "hf-paper-summarize"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "urls",
+              "value": "={{$json.body.urls || $json.urls || []}}",
+              "type": "array"
+            },
+            {
+              "name": "targetLanguage",
+              "value": "={{$json.body.targetLanguage || \"ko\"}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "Prepare_Input",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const urls = $json.urls || [];\nif (!Array.isArray(urls) || urls.length === 0) {\n  throw new Error('urls 배열이 비어 있습니다. body.urls에 URL 배열을 전달하세요.');\n}\nreturn urls.map((u) => ({ json: { url: u, targetLanguage: $json.targetLanguage || 'ko' } }));"
+      },
+      "id": "Explode_URLs",
+      "name": "Explode URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 280]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{'https://r.jina.ai/http://' + $json.url.replace(/^https?:\\/\\//, '')}}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "Fetch_Paper_Content",
+      "name": "Fetch Paper Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [930, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upstage.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'REPLACE_WITH_YOUR_REAL_KEY')}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'paper_summary',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','tags','action_items'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    {\n      role: 'system',\n      content: `너는 논문 리뷰 어시스턴트다. 입력 텍스트를 읽고 ${$json.targetLanguage || 'ko'}로만 답해라. 과장 금지. 수치/조건은 최대한 보존하라.`\n    },\n    {\n      role: 'user',\n      content: `다음 논문 페이지/본문을 분석해 구조화 요약 JSON으로 만들어줘.\\n원본 URL: ${$json.url}\\n\\n본문:\\n${($json.body || $json.data || $json).toString().slice(0, 12000)}`\n    }\n  ]\n} }}",
+        "options": {
+          "response": {
+            "responseFormat": "json"
+          }
+        }
+      },
+      "id": "Upstage_Summarize",
+      "name": "Upstage Summarize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1170, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(content); } catch (e) { parsed = { raw: content }; }\nreturn [{\n  json: {\n    source_url: $item(0).$node['Explode URLs'].json.url,\n    ...parsed\n  }\n}];"
+      },
+      "id": "Parse_Result",
+      "name": "Parse Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1410, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i => i.json);\nreturn [{ json: { ok: true, count: all.length, summaries: all } }];"
+      },
+      "id": "Collect_Summaries",
+      "name": "Collect Summaries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 280]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}"
+      },
+      "id": "Respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1860, 280]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Prepare Input", "type": "main", "index": 0 }]]
+    },
+    "Prepare Input": {
+      "main": [[{ "node": "Explode URLs", "type": "main", "index": 0 }]]
+    },
+    "Explode URLs": {
+      "main": [[{ "node": "Fetch Paper Content", "type": "main", "index": 0 }]]
+    },
+    "Fetch Paper Content": {
+      "main": [[{ "node": "Upstage Summarize", "type": "main", "index": 0 }]]
+    },
+    "Upstage Summarize": {
+      "main": [[{ "node": "Parse Result", "type": "main", "index": 0 }]]
+    },
+    "Parse Result": {
+      "main": [[{ "node": "Collect Summaries", "type": "main", "index": 0 }]]
+    },
+    "Collect Summaries": {
+      "main": [[{ "node": "Respond", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
