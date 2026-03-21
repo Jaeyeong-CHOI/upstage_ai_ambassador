@@ -14,6 +14,7 @@
 
 - `workflow.upstage-hf-paper-summarizer.json` : 기본 워크플로우 (env 우선 + 하드코드 fallback)
 - `workflow.upstage-hf-paper-summarizer-advanced.json` : 2단계 요약 + 피드백 반영 + 품질점수
+- `workflow.research-orchestrator-pro.json` : URL/텍스트 혼합 입력 + 포트폴리오형 리서치 오케스트레이션
 - `.env.example` : 환경변수 템플릿 (실제 키 제외)
 - `blog-post.md` : 제작 과정을 정리한 블로그 포스트 초안
 
@@ -24,7 +25,7 @@
 ## 1) n8n에 워크플로우 Import
 
 n8n → Workflows → Import from File에서
-`workflow.upstage-hf-paper-summarizer.json` 선택
+원하는 json 파일 선택
 
 ## 2) API 키 환경변수 설정
 
@@ -63,6 +64,23 @@ curl -X POST "https://<YOUR_N8N_HOST>/webhook/hf-paper-summarize-advanced" \
     "urls": [
       "https://huggingface.co/papers/2403.12345",
       "https://huggingface.co/papers/2402.01234"
+    ]
+  }'
+```
+
+자유형 오케스트레이터(텍스트+URL 혼합):
+
+```bash
+curl -X POST "https://<YOUR_N8N_HOST>/webhook/research-orchestrator-pro" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "targetLanguage": "ko",
+    "goal": "다음 주 실험 우선순위 정리",
+    "feedback": "리스크/기회와 실험 아이디어를 강하게",
+    "items": [
+      "https://huggingface.co/papers/2403.12345",
+      "https://huggingface.co/papers/2402.01234",
+      "우리 팀은 현재 24GB GPU 환경에서만 재현 가능"
     ]
   }'
 ```
