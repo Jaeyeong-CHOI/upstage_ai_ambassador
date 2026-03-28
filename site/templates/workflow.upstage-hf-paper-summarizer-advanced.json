@@ -64,7 +64,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "={{'https://r.jina.ai/http://' + $json.url.replace(/^https?:\\/\\//, '')}}",
+        "url": "={{'https://r.jina.ai/' + $json.url}}",
         "options": {
           "timeout": 120000
         }
