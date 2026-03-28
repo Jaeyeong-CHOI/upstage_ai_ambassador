@@ -7,7 +7,7 @@
 
   <!-- OG tags for LinkedIn sharing -->
   <meta property="og:title" content="Upstage × n8n 논문 요약 자동화" />
-  <meta property="og:description" content="Hugging Face 논문 URL을 넣으면 Upstage Solar가 한국어 구조화 요약을 반환하는 n8n 워크플로우. API 키만 입력하면 바로 JSON 다운로드." />
+  <meta property="og:description" content="HuggingFace Daily Papers를 매일 자동 수집해 Upstage Solar가 한국어 구조화 요약 → 이메일 Digest. API 키만 입력하면 바로 n8n 워크플로우 JSON 다운로드." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://jaeyeong-choi.github.io/upstage_ai_ambassador/" />
   <meta property="og:image" content="https://jaeyeong-choi.github.io/upstage_ai_ambassador/og-image.png" />
@@ -274,13 +274,19 @@
     <div class="hero">
       <span class="hero-badge">Upstage AI Ambassador</span>
       <h1>논문 요약 자동화 워크플로우</h1>
-      <p>Hugging Face 논문 URL → Upstage Solar → 한국어 구조화 요약 JSON.<br>API 키만 입력하면 바로 n8n에 Import할 수 있는 워크플로우를 받을 수 있습니다.</p>
+      <p>HuggingFace Daily Papers를 매일 자동 수집 → Upstage Solar로 한국어 구조화 요약 → 이메일 Digest.<br>API 키만 입력하면 바로 n8n에 Import할 수 있는 워크플로우를 받을 수 있습니다.</p>
     </div>
 
     <!-- Workflow selection -->
     <div class="workflow-grid" id="workflowGrid">
-      <label class="wf-card selected" data-value="workflow.upstage-hf-paper-summarizer.json">
-        <input type="radio" name="workflow" value="workflow.upstage-hf-paper-summarizer.json" checked />
+      <label class="wf-card selected" data-value="workflow.upstage-daily-paper-digest.json">
+        <input type="radio" name="workflow" value="workflow.upstage-daily-paper-digest.json" checked />
+        <div class="wf-name">⭐ Daily Paper Digest</div>
+        <div class="wf-desc">매일 HF 인기 논문 Top 10을 자동 수집 → Upstage Solar 요약 → 이메일 발송.</div>
+        <span class="wf-tag">9 nodes · Schedule + Email</span>
+      </label>
+      <label class="wf-card" data-value="workflow.upstage-hf-paper-summarizer.json">
+        <input type="radio" name="workflow" value="workflow.upstage-hf-paper-summarizer.json" />
         <div class="wf-name">📄 Basic Summarizer</div>
         <div class="wf-desc">논문 URL → 1단계 구조화 요약. 가장 심플한 파이프라인.</div>
         <span class="wf-tag">8 nodes</span>

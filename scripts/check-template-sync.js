@@ -4,6 +4,7 @@ const files = [
   'workflow.upstage-hf-paper-summarizer.json',
   'workflow.upstage-hf-paper-summarizer-advanced.json',
   'workflow.research-orchestrator-pro.json',
+  'workflow.upstage-daily-paper-digest.json',
 ];
 
 let failed = false;

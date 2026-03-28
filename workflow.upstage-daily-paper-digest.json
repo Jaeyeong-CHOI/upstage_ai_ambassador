@@ -1,0 +1,227 @@
+{
+  "name": "Upstage x HF Daily Paper Digest → Email",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 280]
+    },
+    {
+      "parameters": {},
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fetch today's (or yesterday's) daily papers from HF API\nconst today = new Date();\nconst yyyy = today.getFullYear();\nconst mm = String(today.getMonth() + 1).padStart(2, '0');\nconst dd = String(today.getDate()).padStart(2, '0');\nconst dateStr = `${yyyy}-${mm}-${dd}`;\n\nconst resp = await fetch(`https://huggingface.co/api/daily_papers?date=${dateStr}`);\nif (!resp.ok) throw new Error(`HF API error: ${resp.status}`);\nconst papers = await resp.json();\n\n// If no papers today, try yesterday\nif (papers.length === 0) {\n  const yesterday = new Date(today);\n  yesterday.setDate(yesterday.getDate() - 1);\n  const yd = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;\n  const resp2 = await fetch(`https://huggingface.co/api/daily_papers?date=${yd}`);\n  if (resp2.ok) {\n    const papers2 = await resp2.json();\n    if (papers2.length > 0) {\n      // Sort by upvotes, take top 10\n      papers2.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\n      const top = papers2.slice(0, 10);\n      return top.map(p => ({\n        json: {\n          date: yd,\n          paper_id: p.paper?.id || '',\n          title: p.paper?.title || 'Untitled',\n          url: `https://huggingface.co/papers/${p.paper?.id}`,\n          upvotes: p.paper?.upvotes || 0\n        }\n      }));\n    }\n  }\n  throw new Error('No daily papers found for today or yesterday.');\n}\n\n// Sort by upvotes, take top 10\npapers.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\nconst top = papers.slice(0, 10);\nreturn top.map(p => ({\n  json: {\n    date: dateStr,\n    paper_id: p.paper?.id || '',\n    title: p.paper?.title || 'Untitled',\n    url: `https://huggingface.co/papers/${p.paper?.id}`,\n    upvotes: p.paper?.upvotes || 0\n  }\n}));"
+      },
+      "name": "Fetch Daily Papers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 280]
+    },
+    {
+      "parameters": {
+        "url": "={{'https://r.jina.ai/' + $json.url}}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "name": "Extract Paper Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 280],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lang = 'ko';\nconst url = $json.url || $item(0).$node['Fetch Daily Papers'].json.url || 'n/a';\nconst title = $item(0).$node['Fetch Daily Papers'].json.title || '';\nconst upvotes = $item(0).$node['Fetch Daily Papers'].json.upvotes || 0;\nconst content = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!content || content.length < 100) {\n  return [{ json: { ...$item(0).$node['Fetch Daily Papers'].json, ok: false, error_type: 'fetch_failed', error_message: 'Paper content too short or empty' } }];\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'paper_summary',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title', 'one_line', 'problem', 'method', 'results', 'limitations', 'tags', 'action_items'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 논문 리뷰 어시스턴트다. 입력 텍스트를 읽고 ' + lang + '로만 답해라. 과장 금지. 수치/조건은 최대한 보존하라.' },\n    { role: 'user', content: '다음 논문을 분석해 구조화 요약 JSON으로 만들어줘.\\n원본 URL: ' + url + '\\n\\n본문:\\n' + content }\n  ]\n};\n\nreturn [{ json: { ...$item(0).$node['Fetch Daily Papers'].json, content_length: content.length, upstage_payload: payload } }];"
+      },
+      "name": "Build Summary Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upstage.ai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'REPLACE_WITH_YOUR_REAL_KEY')}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.upstage_payload}}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "name": "Upstage Summarize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 280],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = {\n  paper_id: $item(0).$node['Fetch Daily Papers'].json.paper_id,\n  title: $item(0).$node['Fetch Daily Papers'].json.title,\n  url: $item(0).$node['Fetch Daily Papers'].json.url,\n  upvotes: $item(0).$node['Fetch Daily Papers'].json.upvotes,\n  date: $item(0).$node['Fetch Daily Papers'].json.date\n};\n\nif ($json.error) {\n  return [{ json: { ...base, ok: false, error_type: 'upstage_error', status: $json.error?.statusCode || null, error_message: $json.error?.message || 'Unknown error' } }];\n}\n\nconst content = $json.choices?.[0]?.message?.content || '{}';\nlet parsed;\ntry { parsed = JSON.parse(content); } catch (e) { parsed = { raw: content }; }\nreturn [{ json: { ...base, ok: true, summary: parsed } }];"
+      },
+      "name": "Parse Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all().map(i => i.json);\nconst date = all[0]?.date || 'unknown';\nconst successItems = all.filter(x => x.ok !== false);\nconst failedItems = all.filter(x => x.ok === false);\n\n// Build HTML email\nlet html = `<div style=\"font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;max-width:680px;margin:0 auto;padding:24px;\">`;\nhtml += `<h1 style=\"font-size:22px;color:#1a1a1a;\">📄 HF Daily Papers Digest — ${date}</h1>`;\nhtml += `<p style=\"color:#6b7280;font-size:14px;\">Upstage Solar가 요약한 오늘의 인기 논문 Top ${successItems.length}편</p>`;\nhtml += `<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\">`;\n\nfor (const item of successItems) {\n  const s = item.summary || {};\n  html += `<div style=\"margin-bottom:28px;\">`;\n  html += `<h2 style=\"font-size:17px;margin:0 0 6px;\"><a href=\"${item.url}\" style=\"color:#6c2bd9;text-decoration:none;\">${s.title || item.title}</a></h2>`;\n  html += `<p style=\"color:#6b7280;font-size:12px;margin:0 0 10px;\">⬆️ ${item.upvotes} upvotes · ${(s.tags||[]).join(', ')}</p>`;\n  html += `<p style=\"font-size:14px;color:#374151;margin:0 0 8px;\"><strong>한 줄:</strong> ${s.one_line || '-'}</p>`;\n  html += `<table style=\"font-size:13px;color:#4b5563;border-collapse:collapse;width:100%;\">`;\n  html += `<tr><td style=\"padding:4px 8px 4px 0;vertical-align:top;font-weight:600;white-space:nowrap;\">문제</td><td style=\"padding:4px 0;\">${s.problem || '-'}</td></tr>`;\n  html += `<tr><td style=\"padding:4px 8px 4px 0;vertical-align:top;font-weight:600;white-space:nowrap;\">방법</td><td style=\"padding:4px 0;\">${s.method || '-'}</td></tr>`;\n  html += `<tr><td style=\"padding:4px 8px 4px 0;vertical-align:top;font-weight:600;white-space:nowrap;\">결과</td><td style=\"padding:4px 0;\">${s.results || '-'}</td></tr>`;\n  html += `<tr><td style=\"padding:4px 8px 4px 0;vertical-align:top;font-weight:600;white-space:nowrap;\">한계</td><td style=\"padding:4px 0;\">${s.limitations || '-'}</td></tr>`;\n  html += `</table>`;\n  if (s.action_items && s.action_items.length > 0) {\n    html += `<p style=\"font-size:12px;color:#059669;margin:8px 0 0;\">💡 ${s.action_items.join(' · ')}</p>`;\n  }\n  html += `</div>`;\n}\n\nif (failedItems.length > 0) {\n  html += `<p style=\"color:#ef4444;font-size:13px;\">⚠️ ${failedItems.length}편 요약 실패</p>`;\n}\n\nhtml += `<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\">`;\nhtml += `<p style=\"color:#9ca3af;font-size:12px;\">Powered by <a href=\"https://www.upstage.ai\" style=\"color:#6c2bd9;\">Upstage Solar</a> · <a href=\"https://huggingface.co/papers\" style=\"color:#6c2bd9;\">HuggingFace Daily Papers</a></p>`;\nhtml += `</div>`;\n\nreturn [{ json: {\n  date,\n  subject: `📄 HF Daily Papers Digest — ${date} (${successItems.length}편)`,\n  html,\n  count: all.length,\n  success: successItems.length,\n  failed: failedItems.length\n} }];"
+      },
+      "name": "Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 280]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM || 'your-email@gmail.com'}}",
+        "toEmail": "={{$env.DIGEST_TO || 'your-email@gmail.com'}}",
+        "subject": "={{$json.subject}}",
+        "emailType": "html",
+        "html": "={{$json.html}}",
+        "options": {}
+      },
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1920, 280],
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_SMTP_CREDENTIAL_ID",
+          "name": "Gmail SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Daily Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Daily Papers": {
+      "main": [
+        [
+          {
+            "node": "Extract Paper Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Paper Text": {
+      "main": [
+        [
+          {
+            "node": "Build Summary Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Payload": {
+      "main": [
+        [
+          {
+            "node": "Upstage Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upstage Summarize": {
+      "main": [
+        [
+          {
+            "node": "Parse Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Result": {
+      "main": [
+        [
+          {
+            "node": "Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

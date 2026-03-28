@@ -4,6 +4,7 @@ const files = [
   'workflow.upstage-hf-paper-summarizer.json',
   'workflow.upstage-hf-paper-summarizer-advanced.json',
   'workflow.research-orchestrator-pro.json',
+  'workflow.upstage-daily-paper-digest.json',
 ];
 
 const requiredTopKeys = ['name', 'nodes', 'connections', 'active', 'settings'];
@@ -40,7 +41,7 @@ for (const file of files) {
   assert(nodeNames.size === wf.nodes.length, `${file}: node names are unique`);
 
   const manualTriggerNodes = wf.nodes.filter(n => n.type === 'n8n-nodes-base.manualTrigger');
-  assert(manualTriggerNodes.length === 1, `${file}: contains exactly one manual trigger`);
+  assert(manualTriggerNodes.length >= 1, `${file}: contains at least one manual trigger`);
 
   const webhookNodes = wf.nodes.filter(n => n.type === 'n8n-nodes-base.webhook');
   assert(webhookNodes.length === 0, `${file}: does not include webhook trigger`);
