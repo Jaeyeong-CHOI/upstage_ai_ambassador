@@ -48,7 +48,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// runOnceForEachItem: $json = Extract Paper Text HTTP response\nconst paper = $item(0).$node['Parse Papers'].json;\nconst paperUrl = paper.url || 'n/a';\nconst text = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!text || text.length < 100) {\n  return { json: { ...paper, ok: false, error_type: 'fetch_failed', error_message: 'Content too short or empty' } };\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'paper_summary',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','tags','action_items'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 논문 리뷰 어시스턴트다. ko로만 답해라. 과장 금지. 수치/조건은 최대한 보존하라.' },\n    { role: 'user', content: '다음 논문을 분석해 구조화 요약 JSON으로 만들어줘.\\nURL: ' + paperUrl + '\\n\\n본문:\\n' + text }\n  ]\n};\n\nreturn { json: { ...paper, upstage_payload: JSON.stringify(payload) } };",
+        "jsCode": "// runOnceForEachItem: $json = Extract Paper Text HTTP response\nconst paper = $item(0).$node['Parse Papers'].json;\nconst paperUrl = paper.url || 'n/a';\nconst text = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!text || text.length < 100) {\n  return { json: { ...paper, ok: false, error_type: 'fetch_failed', error_message: 'Content too short or empty' } };\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'paper_summary',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','tags','action_items'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 논문 리뷰 어시스턴트다. ko로만 답해라. 과장 금지. 수치/조건은 최대한 보존하라.' },\n    { role: 'user', content: '다음 논문을 분석해 구조화 요약 JSON으로 만들어줘.\\nURL: ' + paperUrl + '\\n\\n본문:\\n' + text }\n  ]\n};\n\nreturn { json: { ...paper, upstage_payload: payload } };",
         "mode": "runOnceForEachItem"
       },
       "name": "Build Summary Payload",
@@ -69,17 +69,11 @@
             {
               "name": "Authorization",
               "value": "={{'Bearer ' + ($env.UPSTAGE_API_KEY || 'REPLACE_WITH_YOUR_REAL_KEY')}}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{$json.upstage_payload}}",
+        "contentType": "json",
         "options": {
           "response": {
             "response": {
@@ -87,7 +81,9 @@
             }
           },
           "timeout": 120000
-        }
+        },
+        "jsonBody": "={{$json.upstage_payload}}",
+        "specifyBody": "json"
       },
       "name": "Upstage Summarize",
       "type": "n8n-nodes-base.httpRequest",
