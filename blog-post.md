@@ -47,7 +47,7 @@
 
 워크플로우는 단순하다.
 
-1. **Webhook Trigger**
+1. **Manual Trigger**
    - `urls[]`와 `targetLanguage`를 입력받는다.
 2. **URL 펼치기(Code)**
    - URL 배열을 item 단위로 분해한다.
