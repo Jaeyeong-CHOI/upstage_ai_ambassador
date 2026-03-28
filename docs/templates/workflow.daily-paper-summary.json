@@ -32,14 +32,89 @@
     },
     {
       "parameters": {
-        "jsCode": "const today = new Date();\nconst fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\n\nlet papers = [];\nlet dateStr = fmt(today);\n\nconst resp = await fetch(`https://huggingface.co/api/daily_papers?date=${dateStr}`);\nif (resp.ok) papers = await resp.json();\n\nif (papers.length === 0) {\n  const yesterday = new Date(today);\n  yesterday.setDate(yesterday.getDate() - 1);\n  dateStr = fmt(yesterday);\n  const resp2 = await fetch(`https://huggingface.co/api/daily_papers?date=${dateStr}`);\n  if (resp2.ok) papers = await resp2.json();\n}\n\nif (papers.length === 0) throw new Error('No daily papers found.');\n\npapers.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\nconst top = papers.slice(0, 10);\n\nreturn top.map(p => ({\n  json: {\n    date: dateStr,\n    paper_id: p.paper?.id || '',\n    title: p.paper?.title || 'Untitled',\n    url: `https://huggingface.co/papers/${p.paper?.id}`,\n    upvotes: p.paper?.upvotes || 0\n  }\n}));"
+        "jsCode": "const today = new Date();\nconst fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\nconst todayStr = fmt(today);\nconst yesterday = new Date(today);\nyesterday.setDate(yesterday.getDate() - 1);\nconst yesterdayStr = fmt(yesterday);\nreturn [{ json: { todayDate: todayStr, yesterdayDate: yesterdayStr } }];"
       },
-      "name": "Fetch Daily Papers",
+      "name": "Prepare Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         480,
         280
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{'https://huggingface.co/api/daily_papers?date=' + $json.todayDate}}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Fetch Papers Today",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        280
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "let papers = [];\ntry {\n  const body = $json.body || $json;\n  if (Array.isArray(body)) papers = body;\n  else if (typeof body === 'string') papers = JSON.parse(body);\n} catch (e) { /* */ }\n\nconst dateInput = $item(0).$node['Prepare Date'].json;\n\nif (papers.length === 0) {\n  return [{ json: { needFallback: true, yesterdayDate: dateInput.yesterdayDate, date: dateInput.todayDate } }];\n}\n\npapers.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\nconst top = papers.slice(0, 10);\nreturn top.map(p => ({\n  json: {\n    needFallback: false,\n    date: dateInput.todayDate,\n    paper_id: p.paper?.id || '',\n    title: p.paper?.title || 'Untitled',\n    url: `https://huggingface.co/papers/${p.paper?.id}`,\n    upvotes: p.paper?.upvotes || 0\n  }\n}));"
+      },
+      "name": "Parse Papers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.needFallback}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Need Fallback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{'https://huggingface.co/api/daily_papers?date=' + $json.yesterdayDate}}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Fetch Papers Yesterday",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        140
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "let papers = [];\ntry {\n  const body = $json.body || $json;\n  if (Array.isArray(body)) papers = body;\n  else if (typeof body === 'string') papers = JSON.parse(body);\n} catch (e) { /* */ }\n\nconst dateInput = $item(0).$node['Prepare Date'].json;\nconst dateStr = dateInput.yesterdayDate;\n\nif (papers.length === 0) {\n  return [{ json: { date: dateStr, paper_id: '', title: 'No papers found', url: '#', upvotes: 0 } }];\n}\n\npapers.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\nconst top = papers.slice(0, 10);\nreturn top.map(p => ({\n  json: {\n    date: dateStr,\n    paper_id: p.paper?.id || '',\n    title: p.paper?.title || 'Untitled',\n    url: `https://huggingface.co/papers/${p.paper?.id}`,\n    upvotes: p.paper?.upvotes || 0\n  }\n}));"
+      },
+      "name": "Parse Yesterday",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        140
       ]
     },
     {
@@ -53,20 +128,20 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        720,
+        1560,
         280
       ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const url = $item(0).$node['Fetch Daily Papers'].json.url || 'n/a';\nconst content = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!content || content.length < 100) {\n  return [{ json: { ...$item(0).$node['Fetch Daily Papers'].json, ok: false, error_type: 'fetch_failed', error_message: 'Content too short' } }];\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'paper_summary',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','tags','action_items'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 논문 리뷰 어시스턴트다. ko로만 답해라. 과장 금지. 수치/조건은 최대한 보존하라.' },\n    { role: 'user', content: '다음 논문을 분석해 구조화 요약 JSON으로 만들어줘.\\nURL: ' + url + '\\n\\n본문:\\n' + content }\n  ]\n};\n\nreturn [{ json: { ...$item(0).$node['Fetch Daily Papers'].json, upstage_payload: payload } }];"
+        "jsCode": "const url = $item(0).$node['Parse Papers'].json.url || 'n/a';\nconst content = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!content || content.length < 100) {\n  return [{ json: { ...$item(0).$node['Parse Papers'].json, ok: false, error_type: 'fetch_failed', error_message: 'Content too short' } }];\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'paper_summary',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','tags','action_items'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 논문 리뷰 어시스턴트다. ko로만 답해라. 과장 금지. 수치/조건은 최대한 보존하라.' },\n    { role: 'user', content: '다음 논문을 분석해 구조화 요약 JSON으로 만들어줘.\\nURL: ' + url + '\\n\\n본문:\\n' + content }\n  ]\n};\n\nreturn [{ json: { ...$item(0).$node['Parse Papers'].json, upstage_payload: payload } }];"
       },
       "name": "Build Summary Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
+        1800,
         280
       ]
     },
@@ -104,7 +179,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1200,
+        2040,
         280
       ],
       "onError": "continueRegularOutput"
@@ -117,7 +192,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1440,
+        2280,
         280
       ]
     },
@@ -129,7 +204,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
+        2520,
         280
       ]
     },
@@ -146,7 +221,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1920,
+        2760,
         280
       ],
       "credentials": {
@@ -162,7 +237,7 @@
       "main": [
         [
           {
-            "node": "Fetch Daily Papers",
+            "node": "Prepare Date",
             "type": "main",
             "index": 0
           }
@@ -173,14 +248,76 @@
       "main": [
         [
           {
-            "node": "Fetch Daily Papers",
+            "node": "Prepare Date",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Daily Papers": {
+    "Prepare Date": {
+      "main": [
+        [
+          {
+            "node": "Fetch Papers Today",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Papers Today": {
+      "main": [
+        [
+          {
+            "node": "Parse Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Papers": {
+      "main": [
+        [
+          {
+            "node": "Need Fallback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need Fallback?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Papers Yesterday",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Paper Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Papers Yesterday": {
+      "main": [
+        [
+          {
+            "node": "Parse Yesterday",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Yesterday": {
       "main": [
         [
           {
