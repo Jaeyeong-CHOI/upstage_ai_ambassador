@@ -48,7 +48,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Safely get paper metadata from earlier in the chain\nconst paperData = $item(0).$node['Pick Best Results'].json || {};\nconst url = paperData.url || 'n/a';\nconst content = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!content || content.length < 100) {\n  return [{ json: { ...paperData, ok: false, error_type: 'fetch_failed', error_message: 'Content too short' } }];\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'deep_analysis',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          novelty: { type: 'string' },\n          impact: { type: 'string' },\n          related_work_gaps: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } },\n          search_queries: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','novelty','impact','related_work_gaps','tags','action_items','search_queries'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 시니어 연구자다. ko로 답하라. 과장 금지. 수치/실험 조건 보존. novelty(새로운 점), impact(실무적 영향), related_work_gaps(선행연구 대비 빈 곳)를 반드시 분석하라. search_queries에는 관련 논문을 더 찾기 위한 검색어 3개를 영어로 제안하라.' },\n    { role: 'user', content: '다음 논문을 깊이 분석하라.\\nURL: ' + url + '\\n\\n본문:\\n' + content }\n  ]\n};\n\nreturn [{ json: { ...paperData, upstage_payload: payload } }];"
+        "jsCode": "// Safely get paper metadata from earlier in the chain\nconst paperData = $item(0).$node['Parse Papers'].json || {};\nconst url = paperData.url || 'n/a';\nconst content = String($json.body || $json.data || $json.content || '').slice(0, 12000);\n\nif (!content || content.length < 100) {\n  return [{ json: { ...paperData, ok: false, error_type: 'fetch_failed', error_message: 'Content too short' } }];\n}\n\nconst payload = {\n  model: 'solar-pro2',\n  temperature: 0.2,\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'deep_analysis',\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string' },\n          one_line: { type: 'string' },\n          problem: { type: 'string' },\n          method: { type: 'string' },\n          results: { type: 'string' },\n          limitations: { type: 'string' },\n          novelty: { type: 'string' },\n          impact: { type: 'string' },\n          related_work_gaps: { type: 'string' },\n          tags: { type: 'array', items: { type: 'string' } },\n          action_items: { type: 'array', items: { type: 'string' } },\n          search_queries: { type: 'array', items: { type: 'string' } }\n        },\n        required: ['title','one_line','problem','method','results','limitations','novelty','impact','related_work_gaps','tags','action_items','search_queries'],\n        additionalProperties: false\n      }\n    }\n  },\n  messages: [\n    { role: 'system', content: '너는 시니어 연구자다. ko로 답하라. 과장 금지. 수치/실험 조건 보존. novelty(새로운 점), impact(실무적 영향), related_work_gaps(선행연구 대비 빈 곳)를 반드시 분석하라. search_queries에는 관련 논문을 더 찾기 위한 검색어 3개를 영어로 제안하라.' },\n    { role: 'user', content: '다음 논문을 깊이 분석하라.\\nURL: ' + url + '\\n\\n본문:\\n' + content }\n  ]\n};\n\nreturn [{ json: { ...paperData, upstage_payload: payload } }];"
       },
       "name": "Build Analysis Payload",
       "type": "n8n-nodes-base.code",
@@ -197,70 +197,30 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get the most recent date that likely has papers\n// HF Daily Papers updates on US time, so:\n// - If it's before ~10am UTC, yesterday's papers are the latest\n// - We'll try today first, then yesterday, then 2 days ago\nconst now = new Date();\nconst dates = [];\nfor (let i = 0; i < 3; i++) {\n  const d = new Date(now);\n  d.setDate(d.getDate() - i);\n  dates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));\n}\nreturn [{ json: { dates: dates } }];"
+        "url": "={{'https://huggingface.co/api/daily_papers?date=' + new Date(Date.now() - 86400000).toISOString().slice(0,10)}}",
+        "options": {
+          "timeout": 15000
+        }
       },
-      "name": "Prepare Dates",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Fetch HF Papers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         480,
         280
-      ]
-    },
-    {
-      "parameters": {
-        "url": "={{'https://huggingface.co/api/daily_papers?date=' + $json.dates[0]}}",
-        "options": {
-          "timeout": 15000
-        }
-      },
-      "name": "Fetch Day 0",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        680,
-        280
       ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "url": "={{'https://huggingface.co/api/daily_papers?date=' + $item(0).$node['Prepare Dates'].json.dates[1]}}",
-        "options": {
-          "timeout": 15000
-        }
+        "jsCode": "const dateStr = new Date(Date.now() - 86400000).toISOString().slice(0,10);\nlet papers = [];\n\n// Handle all possible n8n HTTP response formats\nconst raw = $input.first().json;\ntry {\n  if (Array.isArray(raw)) papers = raw;\n  else if (Array.isArray(raw?.body)) papers = raw.body;\n  else if (typeof raw === 'string') papers = JSON.parse(raw);\n  else if (typeof raw?.body === 'string' && raw.body.trim().startsWith('[')) papers = JSON.parse(raw.body);\n  else {\n    // n8n may auto-parse the JSON array into numbered keys\n    const keys = Object.keys(raw).filter(k => !isNaN(k));\n    if (keys.length > 0) {\n      papers = keys.map(k => raw[k]);\n    }\n  }\n} catch (e) {}\n\nif (!papers.length) {\n  return [{ json: { date: dateStr, paper_id: 'none', title: 'No papers found for ' + dateStr, url: '#', upvotes: 0 } }];\n}\n\npapers.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\nreturn papers.slice(0, 5).map(p => ({\n  json: {\n    date: dateStr,\n    paper_id: p.paper?.id || '',\n    title: p.paper?.title || 'Untitled',\n    url: 'https://huggingface.co/papers/' + (p.paper?.id || ''),\n    upvotes: p.paper?.upvotes || 0\n  }\n}));"
       },
-      "name": "Fetch Day 1",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        680,
-        480
-      ],
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "mode": "append"
-      },
-      "name": "Merge Responses",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 2.1,
-      "position": [
-        920,
-        380
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pick the first non-empty response from today or yesterday\nconst items = $input.all().map(i => i.json);\nconst dates = items[0]?.dates || $item(0)?.$node['Prepare Dates']?.json?.dates || [];\n\nlet papers = [];\nlet usedDate = 'unknown';\n\nfor (const item of items) {\n  let arr = [];\n  try {\n    if (Array.isArray(item)) arr = item;\n    else if (item.body && Array.isArray(item.body)) arr = item.body;\n    else if (typeof item === 'string') arr = JSON.parse(item);\n    else if (typeof item.body === 'string' && item.body.startsWith('[')) arr = JSON.parse(item.body);\n    else if (item.data && Array.isArray(item.data)) arr = item.data;\n    // Check if the item itself has paper data (parsed array response)\n    else if (item.paper) arr = [item];\n  } catch (e) {}\n  \n  if (arr.length > papers.length) {\n    papers = arr;\n  }\n}\n\nif (papers.length === 0) {\n  return [{ json: { date: dates[0] || usedDate, paper_id: '', title: 'No papers available', url: '#', upvotes: 0 } }];\n}\n\n// Determine which date was used\nconst firstPaper = papers[0];\nusedDate = dates[0] || 'unknown'; // approximate\n\npapers.sort((a,b) => (b.paper?.upvotes||0) - (a.paper?.upvotes||0));\nconst top = papers.slice(0, 5);\nreturn top.map(p => ({\n  json: {\n    date: usedDate,\n    paper_id: p.paper?.id || '',\n    title: p.paper?.title || 'Untitled',\n    url: `https://huggingface.co/papers/${p.paper?.id}`,\n    upvotes: p.paper?.upvotes || 0\n  }\n}));"
-      },
-      "name": "Pick Best Results",
+      "name": "Parse Papers",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        380
+        720,
+        280
       ]
     }
   ],
@@ -269,7 +229,7 @@
       "main": [
         [
           {
-            "node": "Prepare Dates",
+            "node": "Fetch HF Papers",
             "type": "main",
             "index": 0
           }
@@ -280,63 +240,25 @@
       "main": [
         [
           {
-            "node": "Prepare Dates",
+            "node": "Fetch HF Papers",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Dates": {
+    "Fetch HF Papers": {
       "main": [
         [
           {
-            "node": "Fetch Day 0",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Fetch Day 1",
+            "node": "Parse Papers",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Day 0": {
-      "main": [
-        [
-          {
-            "node": "Merge Responses",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Day 1": {
-      "main": [
-        [
-          {
-            "node": "Merge Responses",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Merge Responses": {
-      "main": [
-        [
-          {
-            "node": "Pick Best Results",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pick Best Results": {
+    "Parse Papers": {
       "main": [
         [
           {
