@@ -1,68 +1,49 @@
-# Upstage × HuggingFace Paper Summarizer (n8n)
+# Upstage AI Ambassador 2026
 
-허깅페이스 논문 URL을 넣으면, 본문을 읽고 한국어 구조화 요약을 반환하는 n8n 워크플로우입니다.
+Upstage AI Ambassador 활동 기록 및 미션 산출물을 관리하는 레포입니다.
 
-## 왜 이 구성이 유용한가
+---
+
+## 📋 미션 개요
+
+| # | 미션 | 마감 | 상태 |
+|---|------|------|------|
+| 1 | No Code 기반 자동화 워크플로우 | 2026-03-31 | ✅ 구현 완료 |
+| 2 | Upstage API 활용 Skill 개발 | 2026-04-19 | ⬜ 미착수 |
+| 3 | Upstage 제품 SNS 공유 | 2026-05-03 | ⬜ 미착수 |
+| 4 | Upstage API 활용 프로젝트 개발 | 2026-05-22 | ⬜ 미착수 |
+
+상세 계획: [`missions/`](./missions/) 참조
+
+---
+
+## 🚀 미션 1: HuggingFace Paper Summarizer (n8n)
+
+허깅페이스 논문 URL을 넣으면, Upstage Solar로 한국어 구조화 요약을 반환하는 n8n 워크플로우.
+
+### 왜 이 구성이 유용한가
 
 - **Upstage Solar 장점 활용**: 한국어 요약 품질 + 안정적인 JSON 구조화 출력
 - **리서치 워크플로우 최적화**: `문제-방법-결과-한계-액션아이템`으로 바로 정리
-- **자동화 친화적**: Manual Trigger로 즉시 실행 가능, 필요 시 API형으로 확장 쉬움
+- **자동화 친화적**: Manual Trigger로 즉시 실행 가능, API형 확장 용이
 
----
+### 워크플로우 파일
 
-## 포함 파일
+| 파일 | 설명 |
+|------|------|
+| `workflow.upstage-hf-paper-summarizer.json` | 기본 1단계 요약 |
+| `workflow.upstage-hf-paper-summarizer-advanced.json` | 2단계 요약 + 피드백 반영 + 품질점수 |
+| `workflow.research-orchestrator-pro.json` | URL/텍스트 혼합 입력 리서치 오케스트레이션 |
 
-- `workflow.upstage-hf-paper-summarizer.json` : 기본 워크플로우 (env 우선 + 하드코드 fallback)
-- `workflow.upstage-hf-paper-summarizer-advanced.json` : 2단계 요약 + 피드백 반영 + 품질점수
-- `workflow.research-orchestrator-pro.json` : URL/텍스트 혼합 입력 + 포트폴리오형 리서치 오케스트레이션
-- `.env.example` : 환경변수 템플릿 (실제 키 제외)
-- `TESTS.md` : 3개 워크플로우 독립 동작 테스트 체크리스트
-- `scripts/validate-workflows.js` : JSON/연결/Manual Trigger/키 fallback 정적 검증
-- `scripts/test-fixtures.js` : 요청 fixture 유효성 검사
-- `scripts/check-template-sync.js` : 루트 워크플로우 ↔ docs/templates 동기화 검증
-- `.github/workflows/ci.yml` : push/PR 자동 검증 CI
-- `docs/` : GitHub Pages 웹앱(키 입력 → 치환 JSON 다운로드) + 운영 문서
-- `blog-post.md` : 제작 과정을 정리한 블로그 포스트 초안
+### 빠른 시작
 
----
+1. **Import**: n8n → Workflows → Import from File
+2. **API 키 설정**: `UPSTAGE_API_KEY` 환경변수 추가
+3. **실행**: Execute Workflow → 결과 확인
 
-## 빠른 시작
+> ⚠️ 절대 깃허브에 실제 키를 커밋하지 마세요.
 
-## 1) n8n에 워크플로우 Import
-
-n8n → Workflows → Import from File에서
-원하는 json 파일 선택
-
-## 2) API 키 환경변수 설정
-
-n8n 실행 환경에 아래 변수 추가:
-
-```bash
-UPSTAGE_API_KEY=your_upstage_api_key
-```
-
-> 절대 깃허브에 실제 키를 커밋하지 마세요.
-
-## 3) n8n 페이지에서 바로 실행 (Manual Trigger)
-
-이 저장소의 3개 워크플로우는 모두 **Manual Trigger** 기준이다.
-
-1. n8n에서 원하는 workflow JSON import
-2. `Prepare Input` / `Set Input` 노드 클릭
-3. 입력값(urls/items/feedback) 수정
-4. 우측 상단 `Execute Workflow`
-5. 마지막 `Collect` 또는 `Collect Summaries` 노드에서 결과 확인
-
-기본 샘플 입력값은 파일 안에 기본값으로 들어있어서 import 후 바로 실행 가능하다.
-
-## 안정성 개선 (이번 패치)
-
-- Upstage/Fetch HTTP 노드에 `onError: continueRegularOutput` 적용
-- 각 Parse 노드에서 에러 객체를 구조화해 반환 (`status`, `error_message`, `retry_after`)
-- 최종 집계에서 `success/failed` 카운트 제공
-- 긴 Expression을 Code 노드(`Build ... Payload`)로 분리해 n8n 파서 오류 방지
-
-## 4) 응답 예시
+### 응답 예시
 
 ```json
 {
@@ -84,24 +65,43 @@ UPSTAGE_API_KEY=your_upstage_api_key
 }
 ```
 
+### 안정성 개선
+
+- HTTP 노드에 `onError: continueRegularOutput` 적용
+- Parse 노드에서 에러 객체 구조화 반환 (`status`, `error_message`, `retry_after`)
+- 최종 집계에서 `success/failed` 카운트 제공
+- 긴 Expression을 Code 노드로 분리해 n8n 파서 오류 방지
+
 ---
 
-## 보안 체크리스트
+## 🗂 레포 구조
 
-- [ ] `.env` 파일은 `.gitignore`에 포함
-- [ ] 코드/블로그/스크린샷에 API 키 마스킹
+```
+├── workflow.*.json          # n8n 워크플로우 (미션1)
+├── missions/                # 미션 계획/진행/템플릿
+│   ├── MISSION_BREAKDOWN.md
+│   ├── ROADMAP.md
+│   ├── STATUS.md
+│   └── templates/
+├── docs/                    # GitHub Pages 웹앱 + 운영 문서
+├── site/                    # Pages 소스
+├── scripts/                 # 검증 스크립트
+├── tests/                   # 테스트 fixture
+├── blog-post.md             # 블로그 포스트 초안
+├── TESTS.md                 # 테스트 체크리스트
+└── .github/workflows/       # CI
+```
+
+---
+
+## 🔒 보안 체크리스트
+
+- [x] `.env` 파일은 `.gitignore`에 포함
+- [x] 코드/블로그/스크린샷에 API 키 마스킹
 - [ ] 유출 의심 시 즉시 키 폐기 후 재발급
 
 ---
 
-## GitHub 업로드 예시
+## 라이선스
 
-```bash
-cd n8n-upstage-hf-paper-summarizer
-git init
-git add .
-git commit -m "feat: add upstage huggingface paper summarizer n8n workflow"
-git branch -M main
-git remote add origin https://github.com/<your-id>/n8n-upstage-hf-paper-summarizer.git
-git push -u origin main
-```
+MIT
