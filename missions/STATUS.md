@@ -10,7 +10,7 @@
   - `workflow.upstage-hf-paper-summarizer-advanced.json` (2단계 요약+피드백)
   - `workflow.research-orchestrator-pro.json` (리서치 오케스트레이션)
   - CI/테스트/GitHub Pages 배포 완료
-  - 커스텀 도메인: upstage.jaeyeong2026.com 연결 완료
+  - 커스텀 도메인: upstage-ambassador.jaeyeong2026.com 연결 완료
 - [ ] 미션1 SNS (LinkedIn) 공유
 - [x] **미션2**: Upstage Solar 스킬 3종 구현 완료
   - `upstage-academic-mail` — 한국어 학술 이메일 작성기 (교수님/동료/외부, 격식/캐주얼)
