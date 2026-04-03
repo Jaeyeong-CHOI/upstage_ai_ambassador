@@ -33,7 +33,7 @@ HuggingFace Daily Papers를 매일 자동 수집 → **Upstage Solar**로 한국
 
 #### 웹에서 다운로드 (권장)
 
-1. [**upstage-skills.jaeyeong2026.com**](https://upstage-skills.jaeyeong2026.com) 접속
+1. [**upstage.jaeyeong2026.com**](https://upstage.jaeyeong2026.com) 접속
 2. 워크플로우 선택 → (Step 2, 3만) API 키 입력 → JSON 다운로드
 3. n8n → Import from File → SMTP 크레덴셜 설정 → 실행
 
@@ -121,7 +121,7 @@ python3 skills/upstage-script-polisher/scripts/run_script_polisher.py \
 
 ### 스킬 다운로드
 
-- **웹**: [Skills 페이지](https://upstage-skills.jaeyeong2026.com/skills.html)
+- **웹**: [Skills 페이지](https://upstage.jaeyeong2026.com/skills.html)
 - **GitHub**: `skills/` 디렉토리에서 직접 다운로드
 
 ### 특징
@@ -142,7 +142,7 @@ python3 skills/upstage-script-polisher/scripts/run_script_polisher.py \
 │   ├── upstage-paper-to-script/
 │   └── upstage-script-polisher/
 ├── missions/                # 미션 계획/진행/템플릿
-├── docs/                    # GitHub Pages (upstage-skills.jaeyeong2026.com)
+├── docs/                    # GitHub Pages (upstage.jaeyeong2026.com)
 ├── scripts/                 # CI 검증 스크립트
 ├── tests/                   # 테스트 fixture
 └── .github/workflows/       # CI + Pages 배포
@@ -152,8 +152,8 @@ python3 skills/upstage-script-polisher/scripts/run_script_polisher.py \
 
 ## 🔗 링크
 
-- **워크플로우 다운로드**: [upstage-skills.jaeyeong2026.com](https://upstage-skills.jaeyeong2026.com)
-- **스킬 다운로드**: [upstage-skills.jaeyeong2026.com/skills.html](https://upstage-skills.jaeyeong2026.com/skills.html)
+- **워크플로우 다운로드**: [upstage.jaeyeong2026.com](https://upstage.jaeyeong2026.com)
+- **스킬 다운로드**: [upstage.jaeyeong2026.com/skills.html](https://upstage.jaeyeong2026.com/skills.html)
 - **Upstage Console**: [console.upstage.ai](https://console.upstage.ai)
 - **HF Daily Papers**: [huggingface.co/papers](https://huggingface.co/papers)
 
