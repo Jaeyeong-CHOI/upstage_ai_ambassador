@@ -3,7 +3,7 @@
 
 Usage:
     python3 run_academic_mail.py \
-        --bullets "UGRP 중간보고 일정 확인, 다음 주 수요일 가능 여부" \
+        --bullets "졸업논문 피드백 미팅 요청, 다음 주 가능 여부 확인" \
         --recipient-type professor --tone formal
 """
 

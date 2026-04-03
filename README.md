@@ -107,7 +107,7 @@ export UPSTAGE_API_KEY="up_xxxxxxxxxxxxxxx"
 
 # 3. 교수님께 이메일 작성
 python3 skills/upstage-academic-mail/scripts/run_academic_mail.py \
-  --bullets "UGRP 중간보고 일정 확인, 발표자료 검토 요청" \
+  --bullets "졸업논문 피드백 미팅 요청, 발표자료 검토 부탁" \
   --recipient-type professor --tone formal
 
 # 4. 논문 → 발표 스크립트
