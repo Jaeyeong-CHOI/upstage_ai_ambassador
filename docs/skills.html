@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upstage Solar Skills — Korean Academic Toolkit</title>
+
+  <meta property="og:title" content="Upstage Solar Skills — Korean Academic Toolkit" />
+  <meta property="og:description" content="3 Python skills powered by Upstage Solar: Academic Email Writer, Paper→Script Generator, Script Polisher. Free to download." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <style>
+    :root {
+      --bg: #fafafa; --surface: #fff; --border: #e5e7eb; --text: #1a1a1a;
+      --muted: #6b7280; --accent: #6c2bd9; --accent-light: #f3eeff;
+      --accent-hover: #5520b0; --success: #059669; --radius: 12px;
+      --gradient: linear-gradient(135deg, #6c2bd9 0%, #5046e5 100%);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 48px 20px 80px; }
+
+    /* Language toggle */
+    .lang-toggle { position: fixed; top: 16px; right: 16px; z-index: 100; display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .lang-btn { padding: 6px 14px; font-size: 13px; font-weight: 600; border: none; background: transparent; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+    .lang-btn.active { background: var(--accent); color: #fff; }
+    [data-lang="ko"] { display: none; }
+    body.ko [data-lang="ko"] { display: initial; }
+    body.ko [data-lang="en"] { display: none; }
+
+    /* Back link */
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 500; margin-bottom: 32px; }
+    .back-link:hover { text-decoration: underline; }
+
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 48px; }
+    .hero-badge { display: inline-block; background: var(--accent-light); color: var(--accent); font-size: 13px; font-weight: 600; padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; }
+    .hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; }
+    .hero p { color: var(--muted); font-size: 16px; max-width: 600px; margin: 0 auto; }
+    .hero-model { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; padding: 6px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--muted); }
+    .hero-model .dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; }
+
+    /* Pipeline */
+    .pipeline { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 48px; flex-wrap: wrap; }
+    .pipeline-step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; }
+    .pipeline-arrow { color: var(--accent); font-size: 18px; font-weight: 700; }
+
+    /* Skill cards */
+    .skill-grid { display: grid; gap: 20px; margin-bottom: 48px; }
+    .skill-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); padding: 24px; transition: border-color 0.15s, box-shadow 0.15s; }
+    .skill-card:hover { border-color: #c4b5fd; box-shadow: 0 4px 16px rgba(108,43,217,0.08); }
+    .skill-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
+    .skill-icon { font-size: 28px; flex-shrink: 0; }
+    .skill-name { font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+    .skill-desc { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 14px; }
+    .skill-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .skill-tag { display: inline-block; background: var(--accent-light); color: var(--accent); font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+
+    /* Usage block */
+    .usage-block { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 14px 16px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; margin-bottom: 16px; white-space: pre; }
+    .usage-block .comment { color: #6c7086; }
+    .usage-block .flag { color: #89b4fa; }
+    .usage-block .str { color: #a6e3a1; }
+
+    /* Buttons */
+    .skill-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-skill { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent); }
+    .btn-secondary:hover { background: #e8dcff; }
+
+    /* Requirements */
+    .requirements { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 36px; }
+    .requirements h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+    .req-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .req-item { text-align: center; padding: 16px 12px; }
+    .req-icon { font-size: 24px; margin-bottom: 8px; }
+    .req-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .req-desc { color: var(--muted); font-size: 12px; }
+
+    /* Footer */
+    .footer { text-align: center; color: var(--muted); font-size: 13px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .container { padding: 32px 16px 60px; }
+      .hero h1 { font-size: 24px; }
+      .req-grid { grid-template-columns: 1fr; }
+      .pipeline { flex-direction: column; }
+      .pipeline-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Language Toggle -->
+  <div class="lang-toggle">
+    <button class="lang-btn active" data-set-lang="en">EN</button>
+    <button class="lang-btn" data-set-lang="ko">한국어</button>
+  </div>
+
+  <div class="container">
+    <a class="back-link" href="./index.html">
+      ← <span data-lang="en">Back to Workflows</span><span data-lang="ko">워크플로우로 돌아가기</span>
+    </a>
+
+    <div class="hero">
+      <span class="hero-badge">Mission 2 — Upstage API Skills</span>
+      <h1>
+        <span data-lang="en">🎓 Korean Academic Toolkit</span>
+        <span data-lang="ko">🎓 한국어 학술 도구 모음</span>
+      </h1>
+      <p>
+        <span data-lang="en">3 Python CLI skills powered by Upstage Solar for Korean academic workflow: write emails, generate presentation scripts, polish speech. Free &amp; open source.</span>
+        <span data-lang="ko">Upstage Solar 기반 한국어 학술 워크플로우 3종: 이메일 작성, 발표 스크립트 생성, 구어체 폴리싱. 무료 &amp; 오픈소스.</span>
+      </p>
+      <div class="hero-model">
+        <span class="dot"></span>
+        Powered by <strong>&nbsp;solar-pro-3</strong>&nbsp;(102B MoE)
+      </div>
+    </div>
+
+    <!-- Pipeline visualization -->
+    <div class="pipeline">
+      <div class="pipeline-step">📄 <span data-lang="en">Paper</span><span data-lang="ko">논문</span></div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step">🎬 <span data-lang="en">Script</span><span data-lang="ko">스크립트</span></div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step">🎤 <span data-lang="en">Polished Speech</span><span data-lang="ko">자연스러운 발표</span></div>
+    </div>
+
+    <!-- Skill 1: Academic Mail -->
+    <div class="skill-grid">
+      <div class="skill-card" id="academic-mail">
+        <div class="skill-header">
+          <span class="skill-icon">✉️</span>
+          <div>
+            <div class="skill-name">upstage-academic-mail</div>
+          </div>
+        </div>
+        <div class="skill-desc">
+          <span data-lang="en">Korean academic email writer. Input bullet points → get polished emails matching recipient type (교수님/동료/외부) and tone (formal/casual). Leverages Solar's Korean fluency for natural, respectful academic correspondence.</span>
+          <span data-lang="ko">한국어 학술 이메일 작성기. 핵심 내용을 bullet point로 입력하면 수신자(교수님/동료/외부)와 톤(격식/캐주얼)에 맞는 완성된 이메일을 생성합니다. Solar의 한국어 유창성을 활용한 자연스럽고 예의 바른 이메일.</span>
+        </div>
+        <div class="skill-tags">
+          <span class="skill-tag">email</span>
+          <span class="skill-tag">korean</span>
+          <span class="skill-tag">academic</span>
+          <span class="skill-tag">formal/casual</span>
+        </div>
+        <div class="usage-block"><span class="comment"># 교수님께 격식체 이메일</span>
+python3 run_academic_mail.py \
+  <span class="flag">--bullets</span> <span class="str">"UGRP 중간보고 일정 확인, 다음 주 수요일 가능 여부"</span> \
+  <span class="flag">--recipient-type</span> professor <span class="flag">--tone</span> formal</div>
+        <div class="skill-actions">
+          <a class="btn-skill btn-primary" href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador/tree/main/skills/upstage-academic-mail" target="_blank">
+            📂 <span data-lang="en">View on GitHub</span><span data-lang="ko">GitHub에서 보기</span>
+          </a>
+          <button class="btn-skill btn-secondary" onclick="downloadSkill('upstage-academic-mail')">
+            ⬇️ <span data-lang="en">Download</span><span data-lang="ko">다운로드</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Skill 2: Paper to Script -->
+      <div class="skill-card" id="paper-to-script">
+        <div class="skill-header">
+          <span class="skill-icon">🎬</span>
+          <div>
+            <div class="skill-name">upstage-paper-to-script</div>
+          </div>
+        </div>
+        <div class="skill-desc">
+          <span data-lang="en">Paper → presentation script generator. Input paper text, get a structured Korean presentation script with per-section timing, slide cues, and transitions. Supports formal/seminar/lab-meeting styles.</span>
+          <span data-lang="ko">논문 → 발표 스크립트 생성기. 논문 텍스트를 입력하면 섹션별 시간 배분, 슬라이드 cue, 전환 멘트가 포함된 한국어 발표 스크립트를 만듭니다. 격식/세미나/랩미팅 스타일 지원.</span>
+        </div>
+        <div class="skill-tags">
+          <span class="skill-tag">paper</span>
+          <span class="skill-tag">presentation</span>
+          <span class="skill-tag">timing</span>
+          <span class="skill-tag">3 styles</span>
+        </div>
+        <div class="usage-block"><span class="comment"># 15분 세미나 발표 스크립트 생성</span>
+python3 run_paper_to_script.py \
+  <span class="flag">--text-file</span> paper.txt \
+  <span class="flag">--duration</span> 15 <span class="flag">--style</span> seminar</div>
+        <div class="skill-actions">
+          <a class="btn-skill btn-primary" href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador/tree/main/skills/upstage-paper-to-script" target="_blank">
+            📂 <span data-lang="en">View on GitHub</span><span data-lang="ko">GitHub에서 보기</span>
+          </a>
+          <button class="btn-skill btn-secondary" onclick="downloadSkill('upstage-paper-to-script')">
+            ⬇️ <span data-lang="en">Download</span><span data-lang="ko">다운로드</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Skill 3: Script Polisher -->
+      <div class="skill-card" id="script-polisher">
+        <div class="skill-header">
+          <span class="skill-icon">🎤</span>
+          <div>
+            <div class="skill-name">upstage-script-polisher</div>
+          </div>
+        </div>
+        <div class="skill-desc">
+          <span data-lang="en">Polish presentation scripts to sound natural in spoken Korean. Removes written-style stiffness, adds pronunciation hints, natural speech patterns, and speaking tips. Chain with paper-to-script for a complete pipeline.</span>
+          <span data-lang="ko">발표 스크립트를 자연스러운 구어체 한국어로 폴리싱. 문어체 딱딱함 제거, 발음 힌트 추가, 강조 표현 삽입, 발표 팁 제공. paper-to-script와 연결하면 논문→발표 완전 자동화.</span>
+        </div>
+        <div class="skill-tags">
+          <span class="skill-tag">speech</span>
+          <span class="skill-tag">polish</span>
+          <span class="skill-tag">pronunciation</span>
+          <span class="skill-tag">conversational/academic/TED</span>
+        </div>
+        <div class="usage-block"><span class="comment"># 학술 발표 스타일로 폴리싱</span>
+python3 run_script_polisher.py \
+  <span class="flag">--input</span> draft_script.md \
+  <span class="flag">--style</span> academic</div>
+        <div class="skill-actions">
+          <a class="btn-skill btn-primary" href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador/tree/main/skills/upstage-script-polisher" target="_blank">
+            📂 <span data-lang="en">View on GitHub</span><span data-lang="ko">GitHub에서 보기</span>
+          </a>
+          <button class="btn-skill btn-secondary" onclick="downloadSkill('upstage-script-polisher')">
+            ⬇️ <span data-lang="en">Download</span><span data-lang="ko">다운로드</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requirements -->
+    <div class="requirements">
+      <h2><span data-lang="en">Requirements</span><span data-lang="ko">필요 사항</span></h2>
+      <div class="req-grid">
+        <div class="req-item">
+          <div class="req-icon">🐍</div>
+          <div class="req-title">Python 3.8+</div>
+          <div class="req-desc"><code>pip install requests</code></div>
+        </div>
+        <div class="req-item">
+          <div class="req-icon">🔑</div>
+          <div class="req-title">Upstage API Key</div>
+          <div class="req-desc">
+            <a href="https://console.upstage.ai" target="_blank" style="color:var(--accent);">
+              <span data-lang="en">Free from Console</span>
+              <span data-lang="ko">콘솔에서 무료 발급</span>
+            </a>
+          </div>
+        </div>
+        <div class="req-item">
+          <div class="req-icon">☁️</div>
+          <div class="req-title">solar-pro-3</div>
+          <div class="req-desc">102B MoE model</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>
+        Upstage AI Ambassador · Mission 2 ·
+        <a href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador" target="_blank">GitHub</a> ·
+        <a href="./index.html">
+          <span data-lang="en">Workflow Downloads</span>
+          <span data-lang="ko">워크플로우 다운로드</span>
+        </a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Language toggle
+    const langBtns = document.querySelectorAll('[data-set-lang]');
+    function setLang(lang) {
+      document.body.classList.toggle('ko', lang === 'ko');
+      document.documentElement.lang = lang;
+      langBtns.forEach(b => b.classList.toggle('active', b.dataset.setLang === lang));
+      localStorage.setItem('lang', lang);
+    }
+    langBtns.forEach(b => b.addEventListener('click', () => setLang(b.dataset.setLang)));
+    setLang(localStorage.getItem('lang') || 'en');
+
+    // Skill file manifests for download
+    const SKILL_FILES = {
+      'upstage-academic-mail': [
+        'skills/upstage-academic-mail/SKILL.md',
+        'skills/upstage-academic-mail/scripts/run_academic_mail.py',
+        'skills/upstage-academic-mail/references/prompt-guide.md'
+      ],
+      'upstage-paper-to-script': [
+        'skills/upstage-paper-to-script/SKILL.md',
+        'skills/upstage-paper-to-script/scripts/run_paper_to_script.py',
+        'skills/upstage-paper-to-script/references/prompt-guide.md'
+      ],
+      'upstage-script-polisher': [
+        'skills/upstage-script-polisher/SKILL.md',
+        'skills/upstage-script-polisher/scripts/run_script_polisher.py',
+        'skills/upstage-script-polisher/references/prompt-guide.md'
+      ]
+    };
+
+    const GITHUB_RAW = 'https://raw.githubusercontent.com/Jaeyeong-CHOI/upstage-ai-ambassador/main/';
+
+    async function downloadSkill(skillName) {
+      const files = SKILL_FILES[skillName];
+      if (!files) return;
+
+      const btn = event.target.closest('button');
+      const origHTML = btn.innerHTML;
+      btn.innerHTML = '⏳ ...';
+      btn.disabled = true;
+
+      try {
+        // Fetch all files
+        const contents = await Promise.all(
+          files.map(async (path) => {
+            const resp = await fetch(GITHUB_RAW + path);
+            if (!resp.ok) throw new Error(`Failed to fetch ${path}`);
+            const text = await resp.text();
+            return { path: path.replace(`skills/${skillName}/`, ''), content: text };
+          })
+        );
+
+        // Create a simple tar-like text bundle (README with file contents)
+        let bundle = `# ${skillName}\n# Downloaded from github.com/Jaeyeong-CHOI/upstage-ai-ambassador\n\n`;
+        bundle += `To use: extract files into a directory named "${skillName}/"\n\n`;
+        bundle += '='.repeat(60) + '\n\n';
+
+        for (const { path, content } of contents) {
+          bundle += `${'='.repeat(60)}\n`;
+          bundle += `FILE: ${path}\n`;
+          bundle += `${'='.repeat(60)}\n\n`;
+          bundle += content;
+          bundle += '\n\n';
+        }
+
+        // Actually, let's just download the main Python script directly
+        const mainScript = contents.find(c => c.path.endsWith('.py'));
+        if (mainScript) {
+          // Download Python script
+          const blob = new Blob([mainScript.content], { type: 'text/x-python' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = mainScript.path.split('/').pop();
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(a.href);
+        }
+
+        btn.innerHTML = '✅ Done!';
+        setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
+      } catch (e) {
+        console.error(e);
+        btn.innerHTML = '❌ Error';
+        setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
+      }
+    }
+  </script>
+</body>
+</html>

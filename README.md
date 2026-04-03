@@ -9,7 +9,7 @@ Upstage AI Ambassador 활동 기록 및 미션 산출물 관리 레포.
 | # | 미션 | 마감 | 상태 |
 |---|------|------|------|
 | 1 | No Code 기반 자동화 워크플로우 | 2026-03-31 | ✅ 구현 완료 |
-| 2 | Upstage API 활용 Skill 개발 | 2026-04-19 | ⬜ 미착수 |
+| 2 | Upstage API 활용 Skill 개발 | 2026-04-19 | 🔨 구현 완료 |
 | 3 | Upstage 제품 SNS 공유 | 2026-05-03 | ⬜ 미착수 |
 | 4 | Upstage API 활용 프로젝트 개발 | 2026-05-22 | ⬜ 미착수 |
 
@@ -76,10 +76,71 @@ Schedule Trigger    │
 
 ---
 
+## 🎓 미션 2: Korean Academic Toolkit (Upstage Solar Skills)
+
+Upstage Solar(`solar-pro-3`, 102B MoE)의 한국어 능력을 활용한 학술 워크플로우 CLI 스킬 3종.
+
+### 스킬 목록
+
+| # | 스킬 | 설명 | 입력 → 출력 |
+|---|------|------|-------------|
+| 1 | `upstage-academic-mail` | ✉️ 한국어 학술 이메일 작성기 | bullet points → 완성된 이메일 |
+| 2 | `upstage-paper-to-script` | 🎬 논문→발표 스크립트 생성기 | 논문 텍스트 → 타이밍 포함 스크립트 |
+| 3 | `upstage-script-polisher` | 🎤 발표 스크립트 구어체 폴리싱 | 스크립트 → 자연스러운 발표 원고 |
+
+### 파이프라인
+
+```
+논문 (PDF/텍스트)
+  → upstage-paper-to-script (15분 세미나 스크립트 생성)
+    → upstage-script-polisher (자연스러운 구어체로 폴리싱)
+```
+
+### 빠른 시작
+
+```bash
+# 1. 의존성 설치
+pip install requests
+
+# 2. API 키 설정
+export UPSTAGE_API_KEY="up_xxxxxxxxxxxxxxx"
+
+# 3. 교수님께 이메일 작성
+python3 skills/upstage-academic-mail/scripts/run_academic_mail.py \
+  --bullets "UGRP 중간보고 일정 확인, 발표자료 검토 요청" \
+  --recipient-type professor --tone formal
+
+# 4. 논문 → 발표 스크립트
+python3 skills/upstage-paper-to-script/scripts/run_paper_to_script.py \
+  --text-file paper.txt --duration 15 --style seminar
+
+# 5. 스크립트 폴리싱
+python3 skills/upstage-script-polisher/scripts/run_script_polisher.py \
+  --input paper_script.script.md --style academic
+```
+
+### 스킬 다운로드
+
+- **웹**: [Skills 페이지](https://upstage-n8n.jaeyeong2026.com/skills.html)
+- **GitHub**: `skills/` 디렉토리에서 직접 다운로드
+
+### 특징
+
+- 🇰🇷 **한국어 특화**: Solar의 한국어 존칭/격식체 이해 활용
+- 📊 **구조화된 출력**: JSON Schema로 일관된 결과 보장
+- 🔗 **파이프라인**: 스킬 간 연결로 논문→발표 완전 자동화
+- 🔑 **간편 설정**: `requests` 라이브러리만 필요, 복잡한 SDK 불필요
+
+---
+
 ## 🗂 레포 구조
 
 ```
-├── workflow.*.json          # n8n 워크플로우 3종
+├── workflow.*.json          # n8n 워크플로우 3종 (미션 1)
+├── skills/                  # Upstage Solar 스킬 3종 (미션 2)
+│   ├── upstage-academic-mail/
+│   ├── upstage-paper-to-script/
+│   └── upstage-script-polisher/
 ├── missions/                # 미션 계획/진행/템플릿
 ├── docs/                    # GitHub Pages (upstage-n8n.jaeyeong2026.com)
 ├── scripts/                 # CI 검증 스크립트
@@ -92,6 +153,7 @@ Schedule Trigger    │
 ## 🔗 링크
 
 - **워크플로우 다운로드**: [upstage-n8n.jaeyeong2026.com](https://upstage-n8n.jaeyeong2026.com)
+- **스킬 다운로드**: [upstage-n8n.jaeyeong2026.com/skills.html](https://upstage-n8n.jaeyeong2026.com/skills.html)
 - **Upstage Console**: [console.upstage.ai](https://console.upstage.ai)
 - **HF Daily Papers**: [huggingface.co/papers](https://huggingface.co/papers)
 
