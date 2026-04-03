@@ -4,6 +4,14 @@
 Usage:
     python3 run_paper_to_script.py --text-file paper.txt --duration 15 --style seminar
     cat paper.txt | python3 run_paper_to_script.py --duration 10 --style lab-meeting
+
+    # With audience context
+    python3 run_paper_to_script.py --text-file paper.txt --duration 15 --style seminar \
+        --audience-context "비전공자 포함, 학부생 대상"
+
+    # Emphasize specific figures
+    python3 run_paper_to_script.py --text-file paper.txt --duration 20 --style formal \
+        --key-figures "Figure 2,Table 1,Figure 5"
 """
 
 import argparse
@@ -39,6 +47,19 @@ SYSTEM_PROMPT = """\
    - seminar: "-요/-습니다" 혼용, 부연 설명 추가
    - lab-meeting: 편한 어투, 디스커션 유도 표현 포함
 7. 각 섹션에 transition_note(다음 섹션으로 넘어가는 멘트)를 포함합니다.
+"""
+
+SUMMARY_PROMPT = """\
+당신은 학술 논문을 구조적으로 요약하는 전문가입니다.
+아래 논문 텍스트를 다음 구조로 약 3000자 이내로 요약해주세요:
+
+1. **문제 정의 (Problem)**: 이 논문이 해결하려는 핵심 문제
+2. **방법론 (Method)**: 제안하는 방법/아키텍처의 핵심 아이디어
+3. **실험 결과 (Results)**: 주요 실험 결과와 수치 (정확한 숫자 유지)
+4. **핵심 Figure/Table 설명**: 논문에서 가장 중요한 시각 자료 설명
+5. **한계 및 향후 연구 (Limitations)**: 저자가 언급한 한계점
+
+원문의 핵심 수치, 모델명, 데이터셋명은 반드시 그대로 유지하세요.
 """
 
 JSON_SCHEMA = {
@@ -132,15 +153,57 @@ def read_paper_text(args) -> str:
         sys.exit(1)
 
 
-def build_messages(paper_text: str, duration: int, style: str) -> list:
+def summarize_paper(api_key: str, model: str, paper_text: str) -> str:
+    """Stage 1: Summarize long paper text into structured ~3000 char summary."""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    messages = [
+        {"role": "system", "content": SUMMARY_PROMPT},
+        {"role": "user", "content": f"아래 논문을 구조적으로 요약해주세요.\n\n---\n{paper_text[:30000]}\n---"},
+    ]
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 4096,
+    }
+    resp = requests.post(API_URL, headers=headers, json=payload, timeout=120)
+    if resp.status_code != 200:
+        detail = resp.text[:500]
+        print(f"[ERROR] Summarization API returned {resp.status_code}: {detail}", file=sys.stderr)
+        sys.exit(1)
+    data = resp.json()
+    return data["choices"][0]["message"]["content"]
+
+
+def build_messages(
+    paper_text: str,
+    duration: int,
+    style: str,
+    audience_context: str | None = None,
+    key_figures: str | None = None,
+) -> list:
     style_desc = STYLE_DESCRIPTIONS.get(style, style)
+
+    extra_instructions = []
+    if audience_context:
+        extra_instructions.append(f"청중 특성: {audience_context}. 이 청중에 맞게 설명 수준과 용어 난이도를 조절하세요.")
+    if key_figures:
+        extra_instructions.append(f"다음 Figure/Table을 특히 강조하여 스크립트에 포함하세요: {key_figures}")
+
+    extra_block = ""
+    if extra_instructions:
+        extra_block = "\n\n추가 지시:\n" + "\n".join(f"- {inst}" for inst in extra_instructions)
+
     user_msg = f"""발표 시간: {duration}분
-발표 스타일: {style} ({style_desc})
+발표 스타일: {style} ({style_desc}){extra_block}
 
 아래 논문 텍스트를 기반으로 발표 스크립트를 작성해주세요.
 
 ---
-{paper_text[:12000]}
+{paper_text}
 ---"""
 
     return [
@@ -162,7 +225,7 @@ def call_api(api_key: str, model: str, messages: list) -> dict:
             "json_schema": JSON_SCHEMA,
         },
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
     }
 
     resp = requests.post(API_URL, headers=headers, json=payload, timeout=120)
@@ -226,6 +289,16 @@ def main():
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Upstage model name")
     parser.add_argument("--api-key", default=None, help="Upstage API key (or UPSTAGE_API_KEY env)")
     parser.add_argument("--output-dir", default=".", help="Output directory")
+    parser.add_argument(
+        "--audience-context",
+        default=None,
+        help="Describe the audience so the script adapts (e.g., '비전공자 포함', 'NLP 전문가', '학부생 대상')",
+    )
+    parser.add_argument(
+        "--key-figures",
+        default=None,
+        help="Comma-separated list of figure/table numbers to emphasize (e.g., 'Figure 2,Table 1,Figure 5')",
+    )
     args = parser.parse_args()
 
     api_key = args.api_key or os.environ.get("UPSTAGE_API_KEY")
@@ -238,7 +311,25 @@ def main():
         print("[ERROR] Paper text is empty.", file=sys.stderr)
         sys.exit(1)
 
-    messages = build_messages(paper_text, args.duration, args.style)
+    # 2-stage approach for long papers
+    if len(paper_text) > 10000:
+        print(
+            f"[INFO] Paper text is {len(paper_text)} chars (>10,000). "
+            "Running 2-stage: summarize first, then generate script...",
+            file=sys.stderr,
+        )
+        paper_text = summarize_paper(api_key, args.model, paper_text)
+        print(f"[INFO] Summary generated: {len(paper_text)} chars", file=sys.stderr)
+    else:
+        print(f"[INFO] Paper text is {len(paper_text)} chars (≤10,000). Using directly.", file=sys.stderr)
+
+    messages = build_messages(
+        paper_text,
+        args.duration,
+        args.style,
+        audience_context=args.audience_context,
+        key_figures=args.key_figures,
+    )
     print(f"[INFO] Calling {args.model} for {args.duration}min {args.style} script...", file=sys.stderr)
     result = call_api(api_key, args.model, messages)
 

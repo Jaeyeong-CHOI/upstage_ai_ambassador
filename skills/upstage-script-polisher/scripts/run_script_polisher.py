@@ -3,9 +3,16 @@
 
 Usage:
     python3 run_script_polisher.py --input draft_script.md --style academic
+
+    # Pipeline from paper-to-script JSON output
+    python3 run_script_polisher.py --from-json out/paper_script_*.script.json --style conversational
+
+    # Stdin piping
+    cat draft.md | python3 run_script_polisher.py --input - --style ted-talk
 """
 
 import argparse
+import glob
 import json
 import os
 import sys
@@ -40,6 +47,10 @@ SYSTEM_PROMPT = """\
 - 원래 의미를 유지하면서 표현만 변경
 - 기술적 정확성 훼손 금지
 - 핵심 수치/결과는 그대로 유지
+
+추가 출력 요구사항:
+- 각 문단(paragraph)에 대해 원문과 수정본을 **before/after 비교** 형태로 함께 제공하세요.
+  before_after_pairs 배열에 각 문단의 원문(before)과 수정본(after)을 포함합니다.
 """
 
 JSON_SCHEMA = {
@@ -55,6 +66,25 @@ JSON_SCHEMA = {
             "changes_summary": {
                 "type": "string",
                 "description": "주요 변경 사항 요약",
+            },
+            "before_after_pairs": {
+                "type": "array",
+                "description": "문단별 원문 vs 수정본 비교",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "before": {
+                            "type": "string",
+                            "description": "원문 문단",
+                        },
+                        "after": {
+                            "type": "string",
+                            "description": "수정된 문단",
+                        },
+                    },
+                    "required": ["before", "after"],
+                    "additionalProperties": False,
+                },
             },
             "pronunciation_hints": {
                 "type": "array",
@@ -90,6 +120,7 @@ JSON_SCHEMA = {
         "required": [
             "polished_full_text",
             "changes_summary",
+            "before_after_pairs",
             "pronunciation_hints",
             "speech_tips",
             "style_applied",
@@ -99,6 +130,67 @@ JSON_SCHEMA = {
 }
 
 
+def extract_script_from_json(json_path: str) -> str:
+    """Extract all section scripts from a paper-to-script JSON output."""
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    parts = []
+    if "title" in data:
+        parts.append(f"# {data['title']}\n")
+
+    if "sections" in data:
+        for sec in data["sections"]:
+            title = sec.get("section_title", "")
+            script = sec.get("script", "")
+            transition = sec.get("transition_note", "")
+            parts.append(f"## {title}")
+            parts.append(script)
+            if transition:
+                parts.append(transition)
+            parts.append("")
+
+    if "closing_remarks" in data:
+        parts.append("## 마무리")
+        parts.append(data["closing_remarks"])
+
+    return "\n\n".join(parts)
+
+
+def read_input_text(args) -> str:
+    """Read script text from --from-json, --input (file or stdin), in priority order."""
+    # --from-json takes priority
+    if args.from_json:
+        # Support glob patterns
+        paths = glob.glob(args.from_json)
+        if not paths:
+            print(f"[ERROR] No files matched: {args.from_json}", file=sys.stderr)
+            sys.exit(1)
+        # Use the most recent file if multiple match
+        paths.sort()
+        json_path = paths[-1]
+        print(f"[INFO] Reading script from JSON: {json_path}", file=sys.stderr)
+        return extract_script_from_json(json_path)
+
+    # --input - means stdin
+    if args.input == "-":
+        if sys.stdin.isatty():
+            print("[ERROR] --input - specified but no stdin data.", file=sys.stderr)
+            sys.exit(1)
+        return sys.stdin.read().strip()
+
+    # --input as file path
+    if args.input:
+        if not os.path.isfile(args.input):
+            print(f"[ERROR] File not found: {args.input}", file=sys.stderr)
+            sys.exit(1)
+        with open(args.input, "r", encoding="utf-8") as f:
+            return f.read().strip()
+
+    print("[ERROR] Provide input via --input, --from-json, or stdin (--input -).", file=sys.stderr)
+    sys.exit(1)
+
+
 def build_messages(script_text: str, style: str) -> list:
     style_desc = STYLE_DESCRIPTIONS.get(style, style)
     user_msg = f"""스타일: {style} ({style_desc})
@@ -106,7 +198,7 @@ def build_messages(script_text: str, style: str) -> list:
 아래 발표 스크립트를 자연스러운 구어체로 다듬어주세요.
 
 ---
-{script_text[:12000]}
+{script_text[:16000]}
 ---"""
 
     return [
@@ -128,7 +220,7 @@ def call_api(api_key: str, model: str, messages: list) -> dict:
             "json_schema": JSON_SCHEMA,
         },
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
     }
 
     resp = requests.post(API_URL, headers=headers, json=payload, timeout=120)
@@ -163,6 +255,22 @@ def result_to_markdown(result: dict) -> str:
         "",
     ]
 
+    # Before/After comparison section
+    if result.get("before_after_pairs"):
+        lines.append("## 🔄 Before / After 비교")
+        lines.append("")
+        for i, pair in enumerate(result["before_after_pairs"], 1):
+            lines.append(f"### 문단 {i}")
+            lines.append("")
+            lines.append("**Before (원문):**")
+            lines.append(f"> {pair['before']}")
+            lines.append("")
+            lines.append("**After (수정):**")
+            lines.append(f"> {pair['after']}")
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
     if result.get("pronunciation_hints"):
         lines.append("## 🔤 발음 가이드")
         lines.append("")
@@ -184,7 +292,12 @@ def result_to_markdown(result: dict) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Polish scripts to natural spoken Korean (Upstage Solar)")
-    parser.add_argument("--input", required=True, help="Path to script text file")
+    parser.add_argument("--input", default=None, help="Path to script text file, or '-' for stdin")
+    parser.add_argument(
+        "--from-json",
+        default=None,
+        help="Path (or glob pattern) to paper-to-script JSON output. Extracts and concatenates all section scripts.",
+    )
     parser.add_argument(
         "--style",
         default="academic",
@@ -201,19 +314,18 @@ def main():
         print("[ERROR] API key required. Use --api-key or set UPSTAGE_API_KEY env var.", file=sys.stderr)
         sys.exit(1)
 
-    if not os.path.isfile(args.input):
-        print(f"[ERROR] File not found: {args.input}", file=sys.stderr)
+    if not args.input and not args.from_json:
+        print("[ERROR] Provide --input or --from-json.", file=sys.stderr)
         sys.exit(1)
 
-    with open(args.input, "r", encoding="utf-8") as f:
-        script_text = f.read().strip()
+    script_text = read_input_text(args)
 
     if not script_text:
         print("[ERROR] Input script is empty.", file=sys.stderr)
         sys.exit(1)
 
     messages = build_messages(script_text, args.style)
-    print(f"[INFO] Calling {args.model} for {args.style} polishing...", file=sys.stderr)
+    print(f"[INFO] Calling {args.model} for {args.style} polishing ({len(script_text)} chars)...", file=sys.stderr)
     result = call_api(api_key, args.model, messages)
 
     os.makedirs(args.output_dir, exist_ok=True)

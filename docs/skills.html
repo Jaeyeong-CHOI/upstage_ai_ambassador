@@ -128,8 +128,8 @@
           <div><div class="skill-name">upstage-academic-mail</div></div>
         </div>
         <div class="skill-desc">
-          <span data-lang="en">Korean academic email writer. Input bullet points → get polished emails for 교수님/동료/외부, formal or casual tone.</span>
-          <span data-lang="ko">한국어 학술 이메일 작성기. 핵심 bullet point 입력 → 수신자/톤에 맞는 완성된 이메일 생성.</span>
+          <span data-lang="en">Korean academic email writer. Input bullet points → get polished emails for 교수님/동료/외부. Supports reply-to mode, context weaving, CC notes, and smart subject lines.</span>
+          <span data-lang="ko">한국어 학술 이메일 작성기. 답장 모드(--reply-to), 맥락 주입(--context), CC 안내(--cc-note) 지원. 구체적 제목 자동 생성.</span>
         </div>
         <div class="skill-tags">
           <span class="skill-tag">email</span><span class="skill-tag">korean</span><span class="skill-tag">academic</span>
@@ -141,10 +141,12 @@
           </strong><br>
           <code>SKILL.md</code> · <code>scripts/run_academic_mail.py</code> · <code>references/prompt-guide.md</code>
         </div>
-        <div class="usage-block"><span class="comment"># 교수님께 격식체 이메일</span>
+        <div class="usage-block"><span class="comment"># 교수님 이메일에 답장 (맥락 포함)</span>
 python3 run_academic_mail.py \
-  <span class="flag">--bullets</span> <span class="str">"졸업논문 피드백 미팅 요청, 다음 주 가능 여부 확인"</span> \
-  <span class="flag">--recipient-type</span> professor <span class="flag">--tone</span> formal</div>
+  <span class="flag">--bullets</span> <span class="str">"미팅 일정 확인, 목요일 오후 가능"</span> \
+  <span class="flag">--recipient-type</span> professor <span class="flag">--tone</span> formal \
+  <span class="flag">--reply-to</span> professor_email.txt \
+  <span class="flag">--context</span> <span class="str">"졸업논문 3장 피드백 관련"</span></div>
         <div class="skill-actions">
           <a class="btn-skill btn-primary" href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador/tree/main/skills/upstage-academic-mail" target="_blank">📂 GitHub</a>
           <button class="btn-skill btn-secondary" onclick="downloadSkill('upstage-academic-mail')">⬇️ ZIP</button>
@@ -158,8 +160,8 @@ python3 run_academic_mail.py \
           <div><div class="skill-name">upstage-paper-to-script</div></div>
         </div>
         <div class="skill-desc">
-          <span data-lang="en">Paper → presentation script with per-section timing, slide cues, transitions. Supports formal/seminar/lab-meeting.</span>
-          <span data-lang="ko">논문 → 섹션별 시간 배분·슬라이드 cue·전환 멘트 포함 발표 스크립트. 격식/세미나/랩미팅 지원.</span>
+          <span data-lang="en">Paper → presentation script with per-section timing, slide cues, transitions. 2-stage summarization for long papers, audience-aware adaptation, key figure emphasis.</span>
+          <span data-lang="ko">논문 → 발표 스크립트. 긴 논문 2단계 요약 처리, 청중 맞춤(--audience-context), 핵심 Figure 강조(--key-figures) 지원.</span>
         </div>
         <div class="skill-tags">
           <span class="skill-tag">paper</span><span class="skill-tag">presentation</span><span class="skill-tag">timing</span>
@@ -171,10 +173,12 @@ python3 run_academic_mail.py \
           </strong><br>
           <code>SKILL.md</code> · <code>scripts/run_paper_to_script.py</code> · <code>references/prompt-guide.md</code>
         </div>
-        <div class="usage-block"><span class="comment"># 15분 세미나 발표 스크립트</span>
+        <div class="usage-block"><span class="comment"># 학부생 대상 15분 세미나 + Figure 강조</span>
 python3 run_paper_to_script.py \
   <span class="flag">--text-file</span> paper.txt \
-  <span class="flag">--duration</span> 15 <span class="flag">--style</span> seminar</div>
+  <span class="flag">--duration</span> 15 <span class="flag">--style</span> seminar \
+  <span class="flag">--audience-context</span> <span class="str">"학부생 대상"</span> \
+  <span class="flag">--key-figures</span> <span class="str">"Figure 2,Table 1"</span></div>
         <div class="skill-actions">
           <a class="btn-skill btn-primary" href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador/tree/main/skills/upstage-paper-to-script" target="_blank">📂 GitHub</a>
           <button class="btn-skill btn-secondary" onclick="downloadSkill('upstage-paper-to-script')">⬇️ ZIP</button>
@@ -188,8 +192,8 @@ python3 run_paper_to_script.py \
           <div><div class="skill-name">upstage-script-polisher</div></div>
         </div>
         <div class="skill-desc">
-          <span data-lang="en">Polish scripts to natural spoken Korean. Removes stiffness, adds pronunciation hints and speaking tips.</span>
-          <span data-lang="ko">발표 스크립트를 자연스러운 구어체로. 문어체 제거, 발음 힌트·강조 표현·발표 팁 추가.</span>
+          <span data-lang="en">Polish scripts to natural spoken Korean. Supports JSON pipeline from paper-to-script, stdin piping, and before/after comparison output.</span>
+          <span data-lang="ko">발표 스크립트를 자연스러운 구어체로. JSON 파이프라인(--from-json), stdin 지원, Before/After 비교 출력.</span>
         </div>
         <div class="skill-tags">
           <span class="skill-tag">speech</span><span class="skill-tag">polish</span><span class="skill-tag">pronunciation</span>
@@ -201,10 +205,10 @@ python3 run_paper_to_script.py \
           </strong><br>
           <code>SKILL.md</code> · <code>scripts/run_script_polisher.py</code> · <code>references/prompt-guide.md</code>
         </div>
-        <div class="usage-block"><span class="comment"># 학술 발표 스타일로 폴리싱</span>
+        <div class="usage-block"><span class="comment"># paper-to-script JSON → 바로 폴리싱</span>
 python3 run_script_polisher.py \
-  <span class="flag">--input</span> draft_script.md \
-  <span class="flag">--style</span> academic</div>
+  <span class="flag">--from-json</span> <span class="str">"out/paper_script_*.script.json"</span> \
+  <span class="flag">--style</span> conversational</div>
         <div class="skill-actions">
           <a class="btn-skill btn-primary" href="https://github.com/Jaeyeong-CHOI/upstage-ai-ambassador/tree/main/skills/upstage-script-polisher" target="_blank">📂 GitHub</a>
           <button class="btn-skill btn-secondary" onclick="downloadSkill('upstage-script-polisher')">⬇️ ZIP</button>
